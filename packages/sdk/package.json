@@ -1,0 +1,8 @@
+{
+  "name": "@subpath/sdk",
+  "version": "0.1.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@stellar/stellar-sdk": "^12.0.0"
+  }
+}
