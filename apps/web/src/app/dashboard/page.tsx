@@ -1,4 +1,19 @@
+"use client";
+
 export default function DashboardPage() {
+  const handleCreatePlan = () => {
+    alert(
+      "Simulating Soroban Transaction...\n\n" +
+      `Contract: ${process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "CDXCAN3M..."}\n` +
+      "Action: create_plan\n\n" +
+      "Error: Freighter wallet not detected! Please install Freighter to sign this transaction."
+    );
+  };
+
+  const handleManage = (planName: string) => {
+    alert(`Managing plan: ${planName}\n\nFetching on-chain data from Soroban Testnet...`);
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center mb-10">
@@ -6,7 +21,10 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold mb-2">Merchant Dashboard</h1>
           <p className="text-gray-400">Manage your subscription plans and revenue.</p>
         </div>
-        <button className="px-5 py-2.5 rounded-lg font-semibold bg-white text-black hover:bg-gray-200 transition-colors shadow-lg shadow-white/10">
+        <button 
+          onClick={handleCreatePlan}
+          className="px-5 py-2.5 rounded-lg font-semibold bg-white text-black hover:bg-gray-200 transition-colors shadow-lg shadow-white/10"
+        >
           + Create Plan
         </button>
       </div>
@@ -33,7 +51,7 @@ export default function DashboardPage() {
           { name: "Enterprise Tier", price: "99.00 USDC", cycle: "Monthly", subs: 12 },
           { name: "Basic Support", price: "5.00 USDC", cycle: "Weekly", subs: 27 },
         ].map((plan, i) => (
-          <div key={i} className="glass-panel p-5 flex items-center justify-between hover:bg-white/5 transition-colors group cursor-pointer">
+          <div key={i} className="glass-panel p-5 flex items-center justify-between hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => handleManage(plan.name)}>
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-md">
                 {plan.name[0]}
@@ -47,7 +65,10 @@ export default function DashboardPage() {
               <div className="text-right">
                 <p className="text-sm font-medium text-white">{plan.subs} active</p>
               </div>
-              <button className="text-gray-400 hover:text-white transition-colors">
+              <button 
+                className="text-gray-400 hover:text-white transition-colors"
+                onClick={(e) => { e.stopPropagation(); handleManage(plan.name); }}
+              >
                 Manage →
               </button>
             </div>

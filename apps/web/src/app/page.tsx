@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center pt-20 pb-32 text-center">
@@ -18,12 +20,12 @@ export default function Home() {
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-24">
-        <button className="px-8 py-4 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all transform hover:scale-105 shadow-lg shadow-indigo-500/25">
+        <Link href="/dashboard" className="px-8 py-4 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all transform hover:scale-105 shadow-lg shadow-indigo-500/25">
           Launch Dashboard
-        </button>
-        <button className="px-8 py-4 rounded-xl font-bold glass-panel hover:bg-white/10 transition-all">
+        </Link>
+        <a href="https://github.com/SubPath-Protocol/subpath-contract" target="_blank" rel="noreferrer" className="px-8 py-4 rounded-xl font-bold glass-panel hover:bg-white/10 transition-all inline-flex items-center justify-center">
           Read the Docs
-        </button>
+        </a>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left mt-12">

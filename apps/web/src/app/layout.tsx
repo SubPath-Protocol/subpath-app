@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -22,12 +23,12 @@ export default function RootLayout({
             SubPath
           </div>
           <div className="flex gap-4">
-            <button className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">
+            <a href="https://github.com/SubPath-Protocol/subpath-contract" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors inline-flex items-center">
               Documentation
-            </button>
-            <button className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-gray-200 transition-colors shadow-lg shadow-white/20">
+            </a>
+            <Link href="/dashboard" className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-gray-200 transition-colors shadow-lg shadow-white/20 inline-flex items-center">
               Connect Wallet
-            </button>
+            </Link>
           </div>
         </nav>
         <main className="pt-24 min-h-screen px-6 max-w-7xl mx-auto">
