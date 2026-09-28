@@ -1,13 +1,27 @@
 "use client";
+import { requestAccess, isAllowed } from "@stellar/freighter-api";
 
 export default function DashboardPage() {
-  const handleCreatePlan = () => {
-    alert(
-      "Simulating Soroban Transaction...\n\n" +
-      `Contract: ${process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "CDXCAN3M..."}\n` +
-      "Action: create_plan\n\n" +
-      "Error: Freighter wallet not detected! Please install Freighter to sign this transaction."
-    );
+  const handleCreatePlan = async () => {
+    try {
+      const allowed = await isAllowed();
+      if (!allowed) {
+        alert("Freighter extension is not installed or not active.");
+        return;
+      }
+      
+      const access = await requestAccess();
+      if (access) {
+        alert(
+          "Successfully connected to Freighter!\n\n" +
+          `Your Address: ${access}\n` +
+          `Contract ID: ${process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "CDXCAN3M..."}\n` +
+          "Ready to sign `create_plan` transaction!"
+        );
+      }
+    } catch (e) {
+      alert("Error interacting with Freighter. Please check if the extension is unlocked.");
+    }
   };
 
   const handleManage = (planName: string) => {
