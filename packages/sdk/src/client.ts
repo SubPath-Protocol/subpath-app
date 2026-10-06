@@ -49,6 +49,16 @@ export class SubPathClient {
   }
 
   // --- Writes (Returning operations to be signed by a wallet/executor) ---
+  approveToken(tokenAddress: string, from: string, amount: bigint, expirationLedger: number) {
+    const token = new Contract(tokenAddress);
+    return token.call("approve",
+      nativeToScVal(from, { type: "address" }),
+      nativeToScVal(this.config.contractId, { type: "address" }),
+      nativeToScVal(amount, { type: "i128" }),
+      nativeToScVal(expirationLedger, { type: "u32" })
+    );
+  }
+
   createPlan(merchant: string, token: string, amount: bigint, cycleSeconds: number) {
     return this.contract.call("create_plan",
       nativeToScVal(merchant, { type: "address" }),
