@@ -9,8 +9,9 @@ SubPath is a decentralized recurring billing protocol. This repository contains 
 
 ## 🏗 Architecture Overview
 This is a `pnpm` monorepo containing:
-*   `packages/sdk`: Pure TypeScript wrappers around our Soroban contracts, securely handling XDR encoding via `@stellar/stellar-sdk`.
-*   `apps/web`: The Next.js 14 (App Router) user interface.
+*   `packages/sdk`: Pure TypeScript wrappers for type-safe interactions with Soroban. Includes `SubPathClient` with all `Reads` and `Writes`.
+*   `apps/web`: The Next.js 14 App Router UI, containing merchant dashboard and subscriber flows with `@stellar/freighter-api`.
+*   `apps/executor`: A reference Node.js executor service for triggering billing cycles.
 
 ## 🚀 Quick Start
 

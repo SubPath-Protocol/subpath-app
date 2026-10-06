@@ -41,6 +41,10 @@ class SubPathClient {
         return (0, stellar_sdk_1.scValToNative)(response.result.retval);
     }
     // --- Writes (Returning operations to be signed by a wallet/executor) ---
+    approveToken(tokenAddress, from, amount, expirationLedger) {
+        const token = new stellar_sdk_1.Contract(tokenAddress);
+        return token.call("approve", (0, stellar_sdk_1.nativeToScVal)(from, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(this.config.contractId, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(amount, { type: "i128" }), (0, stellar_sdk_1.nativeToScVal)(expirationLedger, { type: "u32" }));
+    }
     createPlan(merchant, token, amount, cycleSeconds) {
         return this.contract.call("create_plan", (0, stellar_sdk_1.nativeToScVal)(merchant, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(token, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(amount, { type: "i128" }), (0, stellar_sdk_1.nativeToScVal)(cycleSeconds, { type: "u64" }));
     }

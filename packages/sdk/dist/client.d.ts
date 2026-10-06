@@ -9,6 +9,7 @@ export declare class SubPathClient {
     getPlan(planId: number): Promise<Plan | null>;
     getSubscription(subscriber: string, planId: number): Promise<Subscription | null>;
     private simulateRead;
+    approveToken(tokenAddress: string, from: string, amount: bigint, expirationLedger: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
     createPlan(merchant: string, token: string, amount: bigint, cycleSeconds: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
     subscribe(subscriber: string, planId: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
     cancelSubscription(subscriber: string, planId: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
