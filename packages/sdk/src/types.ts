@@ -1,5 +1,6 @@
 export interface Plan {
   merchant: string;
+  token: string;
   amount: bigint;
   cycle_seconds: number;
 }

@@ -53,10 +53,10 @@ async function syncEvents(startLedger: number) {
   });
 
   for (const event of res.events || []) {
-    const topic1 = event.topic[0] ? scValToNative(xdr.ScVal.fromXDR(event.topic[0], "base64")) : null;
+    const topic1 = event.topic[0] ? scValToNative(event.topic[0]) : null;
     
     if (topic1 === "plan_add") {
-       const planId = Number(scValToNative(event.value as xdr.ScVal));
+       const planId = Number(scValToNative(event.value));
        const planData = await client.getPlan(planId);
        if (planData) {
          await prisma.plan.upsert({

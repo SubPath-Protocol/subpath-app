@@ -80,7 +80,7 @@ async function syncEvents(startLedger) {
         limit: 10000
     });
     for (const event of res.events || []) {
-        const topic1 = event.topic[0] ? (0, stellar_sdk_1.scValToNative)(stellar_sdk_1.xdr.ScVal.fromXDR(event.topic[0], "base64")) : null;
+        const topic1 = event.topic[0] ? (0, stellar_sdk_1.scValToNative)(event.topic[0]) : null;
         if (topic1 === "plan_add") {
             const planId = Number((0, stellar_sdk_1.scValToNative)(event.value));
             const planData = await client.getPlan(planId);

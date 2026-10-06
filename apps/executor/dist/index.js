@@ -104,7 +104,7 @@ async function pollAndExecute() {
                 .build();
             tx.sign(keypair);
             const resp = await client.server.sendTransaction(tx);
-            if (resp.status === "PENDING" || resp.status === "SUCCESS") {
+            if (resp.status === "PENDING") {
                 console.log(`Execution sent. TX Hash: ${resp.hash}`);
                 // Status will be reverted to ACTIVE by the Indexer once the event is seen on-chain
             }
