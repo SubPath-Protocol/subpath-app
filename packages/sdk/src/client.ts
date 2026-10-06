@@ -82,6 +82,20 @@ export class SubPathClient {
     );
   }
 
+  pauseSubscription(subscriber: string, planId: number) {
+    return this.contract.call("pause_subscription",
+      nativeToScVal(subscriber, { type: "address" }),
+      nativeToScVal(planId, { type: "u64" })
+    );
+  }
+
+  resumeSubscription(subscriber: string, planId: number) {
+    return this.contract.call("resume_subscription",
+      nativeToScVal(subscriber, { type: "address" }),
+      nativeToScVal(planId, { type: "u64" })
+    );
+  }
+
   executeBilling(caller: string, subscriber: string, planId: number) {
     return this.contract.call("execute_billing",
       nativeToScVal(caller, { type: "address" }),

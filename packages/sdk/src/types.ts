@@ -7,7 +7,8 @@ export interface Plan {
 
 export enum SubscriptionStatus {
   Active = 0,
-  Canceled = 1
+  Canceled = 1,
+  Paused = 2
 }
 
 export interface Subscription {

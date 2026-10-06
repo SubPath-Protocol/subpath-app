@@ -54,6 +54,12 @@ class SubPathClient {
     cancelSubscription(subscriber, planId) {
         return this.contract.call("cancel_subscription", (0, stellar_sdk_1.nativeToScVal)(subscriber, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(planId, { type: "u64" }));
     }
+    pauseSubscription(subscriber, planId) {
+        return this.contract.call("pause_subscription", (0, stellar_sdk_1.nativeToScVal)(subscriber, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(planId, { type: "u64" }));
+    }
+    resumeSubscription(subscriber, planId) {
+        return this.contract.call("resume_subscription", (0, stellar_sdk_1.nativeToScVal)(subscriber, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(planId, { type: "u64" }));
+    }
     executeBilling(caller, subscriber, planId) {
         return this.contract.call("execute_billing", (0, stellar_sdk_1.nativeToScVal)(caller, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(subscriber, { type: "address" }), (0, stellar_sdk_1.nativeToScVal)(planId, { type: "u64" }));
     }

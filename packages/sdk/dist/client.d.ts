@@ -13,5 +13,7 @@ export declare class SubPathClient {
     createPlan(merchant: string, token: string, amount: bigint, cycleSeconds: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
     subscribe(subscriber: string, planId: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
     cancelSubscription(subscriber: string, planId: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
+    pauseSubscription(subscriber: string, planId: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
+    resumeSubscription(subscriber: string, planId: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
     executeBilling(caller: string, subscriber: string, planId: number): import("@stellar/stellar-sdk/lib/esm/xdr").Operation;
 }
