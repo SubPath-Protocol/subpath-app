@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { isConnected, getPublicKey, getNetwork, signTransaction } from "@stellar/freighter-api";
+import { isConnected, getAddress, getNetwork, signTransaction } from "@stellar/freighter-api";
 
 interface WalletState {
   address: string | null;
@@ -30,10 +30,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     try {
       const connected = await isConnected();
       if (connected) {
-        const pubKey = await getPublicKey();
-        const net = await getNetwork();
-        setAddress(pubKey);
-        setNetwork(net);
+        const { address: pubKey } = await getAddress();
+        const { network: net } = await getNetwork();
+        setAddress(pubKey || null);
+        setNetwork(net || null);
       }
     } catch (e) {
       console.error(e);
@@ -50,17 +50,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const pubKey = await getPublicKey();
+      const { address: pubKey } = await getAddress();
       if (pubKey) {
-        const net = await getNetwork();
+        const { network: net } = await getNetwork();
         
         const expectedNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK?.toUpperCase() || "TESTNET";
-        if (net.toUpperCase() !== expectedNetwork) {
+        if (net && net.toUpperCase() !== expectedNetwork) {
           alert(`Please switch your Freighter wallet to ${expectedNetwork}. Currently on ${net}.`);
         }
 
         setAddress(pubKey);
-        setNetwork(net);
+        setNetwork(net || null);
         localStorage.setItem("subpath_wallet", "true");
       }
     } catch (e) {
@@ -79,12 +79,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const signAndSubmit = async (xdr: string): Promise<string | null> => {
     try {
-      const signedXdr = await signTransaction(xdr, { network: process.env.NEXT_PUBLIC_STELLAR_NETWORK?.toUpperCase() || "TESTNET" });
-      if (!signedXdr) {
+      const { signedTxXdr } = await signTransaction(xdr, { networkPassphrase: process.env.NEXT_PUBLIC_STELLAR_PASSPHRASE || "Test SDF Network ; September 2015" });
+      if (!signedTxXdr) {
         alert("Transaction signing was rejected.");
         return null;
       }
-      return signedXdr as string; 
+      return signedTxXdr; 
     } catch (e) {
       console.error(e);
       alert("Error signing transaction.");

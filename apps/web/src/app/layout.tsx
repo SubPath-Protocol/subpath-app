@@ -20,7 +20,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} antialiased`}>
-        <nav className="fixed w-full z-50 glass-panel border-b-0 border-x-0 rounded-none px-6 py-4 flex justify-between items-center">
+        <WalletProvider>
+          <nav className="fixed w-full z-50 glass-panel border-b-0 border-x-0 rounded-none px-6 py-4 flex justify-between items-center">
           <div className="font-bold text-2xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
             SubPath
           </div>
@@ -32,10 +33,9 @@ export default function RootLayout({
           </div>
         </nav>
         <main className="pt-24 min-h-screen px-6 max-w-7xl mx-auto">
-          <WalletProvider>
-            {children}
-          </WalletProvider>
+          {children}
         </main>
+        </WalletProvider>
       </body>
     </html>
   );

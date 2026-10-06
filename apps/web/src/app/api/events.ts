@@ -8,8 +8,8 @@ export async function fetchMerchantPlans(merchantAddress: string) {
   // Note: For a production network with millions of ledgers, an off-chain indexer is required.
   // For v0.1 testnet, we query the RPC.
   try {
-    let startLedger = await rpc.getLatestLedger();
-    startLedger = Math.max(1, startLedger.sequence - 100000); // look back ~1 week
+    const latestLedger = await rpc.getLatestLedger();
+    const startLedger = Math.max(1, latestLedger.sequence - 100000); // look back ~1 week
 
     const response = await rpc.getEvents({
       startLedger,
@@ -24,8 +24,8 @@ export async function fetchMerchantPlans(merchantAddress: string) {
       ]
     });
 
-    const plans = [];
-    const subscriptions = [];
+    const plans: any[] = [];
+    const subscriptions: any[] = [];
 
     // Decode events...
     // To be fully implemented

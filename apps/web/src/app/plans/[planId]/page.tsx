@@ -50,7 +50,7 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
       const subOp = client.subscribe(address, parseInt(params.planId));
       
       const accountData = await client.server.getAccount(address);
-      const source = new Account(address, accountData.sequence);
+      const source = new Account(address, accountData.sequenceNumber());
 
       const tx = new TransactionBuilder(source, {
         fee: "10000",
@@ -84,7 +84,7 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
       const op = client.cancelSubscription(address, parseInt(params.planId));
       
       const accountData = await client.server.getAccount(address);
-      const source = new Account(address, accountData.sequence);
+      const source = new Account(address, accountData.sequenceNumber());
       
       const tx = new TransactionBuilder(source, { fee: "1000", networkPassphrase: client.config.networkPassphrase })
       .addOperation(op)

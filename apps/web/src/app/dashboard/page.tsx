@@ -29,8 +29,8 @@ export default function DashboardPage() {
     setLoadingPlans(true);
     try {
       const client = getClient();
-      let startLedger = await client.server.getLatestLedger();
-      startLedger = Math.max(1, startLedger.sequence - 50000);
+      const latestLedger = await client.server.getLatestLedger();
+      const startLedger = Math.max(1, latestLedger.sequence - 50000);
 
       const res = await client.server.getEvents({
         startLedger,
@@ -39,18 +39,17 @@ export default function DashboardPage() {
             type: "contract",
             contractIds: [client.config.contractId],
             topics: [
-              nativeToScVal("plan_add", { type: "symbol" }).toXDR("base64"),
-              nativeToScVal(address, { type: "address" }).toXDR("base64")
+              [nativeToScVal("plan_add", { type: "symbol" }).toXDR("base64")],
+              [nativeToScVal(address, { type: "address" }).toXDR("base64")]
             ]
           }
-        ],
+        ] as any,
         limit: 100
       });
 
       const fetchedPlans = [];
-      for (const record of res.records) {
-        const planIdVal = xdr.ScVal.fromXDR(record.value.xdr, "base64");
-        const planId = Number(scValToNative(planIdVal));
+      for (const record of res.events || []) {
+        const planId = Number(scValToNative(record.value));
         
         const planState = await client.getPlan(planId);
         if (planState) {
@@ -77,7 +76,7 @@ export default function DashboardPage() {
       const op = client.createPlan(address, tokenAddress, amountBigInt, parseInt(cycle));
       
       const accountData = await client.server.getAccount(address);
-      const realSource = new Account(address, accountData.sequence);
+      const realSource = new Account(address, accountData.sequenceNumber());
 
       const tx = new TransactionBuilder(realSource, {
         fee: "10000",
