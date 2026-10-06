@@ -18,7 +18,10 @@ jobs:
           node-version: 22
           
       - name: Install pnpm
-        run: npm install -g pnpm@11.17.0
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
           
       - name: Get pnpm store directory
         shell: bash
@@ -34,9 +37,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
             
       - name: Install dependencies
-        run: |
-          pnpm approve-builds --all || true
-          pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
         
       - name: Run SDK Tests
         run: pnpm --filter @subpath/sdk test
