@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@stellar/freighter-api": "^6.0.1",
+    "@stellar/stellar-sdk": "^17.0.0",
     "@subpath/sdk": "workspace:*",
     "next": "16.3.6",
     "react": "19.2.8",
