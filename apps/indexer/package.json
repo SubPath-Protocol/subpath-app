@@ -1,0 +1,24 @@
+{
+  "name": "indexer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev src/index.ts",
+    "build": "tsc",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@subpath/sdk": "workspace:*",
+    "@stellar/stellar-sdk": "^17.0.0",
+    "@prisma/client": "^5.10.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.10.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0"
+  }
+}
