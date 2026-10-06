@@ -1,14 +1,10 @@
 "use client";
-import { requestAccess, isAllowed } from "@stellar/freighter-api";
 
 export default function DashboardPage() {
   const handleCreatePlan = async () => {
     try {
-      const allowed = await isAllowed();
-      if (!allowed) {
-        alert("Freighter extension is not installed or not active.");
-        return;
-      }
+      // Dynamically import to prevent Next.js SSR window errors!
+      const { requestAccess } = await import("@stellar/freighter-api");
       
       const access = await requestAccess();
       if (access) {
@@ -18,9 +14,11 @@ export default function DashboardPage() {
           `Contract ID: ${process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "CDXCAN3M..."}\n` +
           "Ready to sign `create_plan` transaction!"
         );
+      } else {
+         alert("Freighter extension not detected or user rejected.");
       }
     } catch (e) {
-      alert("Error interacting with Freighter. Please check if the extension is unlocked.");
+      alert("Error: Freighter wallet not detected! Please install the Freighter extension.");
     }
   };
 
