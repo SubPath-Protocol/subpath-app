@@ -54,6 +54,14 @@ async function run() {
   }
 }
 
+function parseSubscriptionStatus(status: any): number {
+  const str = String(Array.isArray(status) ? status[0] : (typeof status === 'object' && status !== null ? Object.keys(status)[0] : status));
+  if (str === "Active" || str === "0") return 1; // 1 = ACTIVE
+  if (str === "Paused" || str === "2") return 3; // 3 = PAUSED
+  if (str === "Canceled" || str === "1") return 0; // 0 = CANCELED
+  return 1;
+}
+
 async function syncEvents(startLedger: number, endLedger: number) {
   let res;
   try {
@@ -115,17 +123,18 @@ async function syncEvents(startLedger: number, endLedger: number) {
         const planId = Number(scValToNative(event.value));
         const subData = await client.getSubscription(subscriber, planId);
         if (subData) {
+          const parsedStatus = parseSubscriptionStatus(subData.status);
           await prisma.subscription.upsert({
             where: { subscriber_planId: { subscriber, planId } },
             update: {
-              status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
+              status: parsedStatus,
               nextBillingTime: Number(subData.next_billing_time),
               lockedAt: null
             },
             create: {
               subscriber,
               planId,
-              status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
+              status: parsedStatus,
               nextBillingTime: Number(subData.next_billing_time)
             }
           });
@@ -146,7 +155,7 @@ async function syncEvents(startLedger: number, endLedger: number) {
         await prisma.subscription.updateMany({
           where: { subscriber, planId },
           data: {
-            status: subData ? (subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0) : 1,
+            status: subData ? parseSubscriptionStatus(subData.status) : 1,
             nextBillingTime: subData ? Number(subData.next_billing_time) : Math.floor(Date.now() / 1000),
             lockedAt: null
           }
@@ -168,7 +177,7 @@ async function syncEvents(startLedger: number, endLedger: number) {
           await prisma.subscription.updateMany({
             where: { subscriber, planId },
             data: {
-              status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
+              status: parseSubscriptionStatus(subData.status),
               nextBillingTime: Number(subData.next_billing_time),
               lockedAt: null
             }
