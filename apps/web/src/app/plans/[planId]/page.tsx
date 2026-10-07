@@ -16,8 +16,8 @@ interface PlanData {
 interface SubscriptionData {
   subscriber: string;
   plan_id: number;
-  next_billing_time: number;
-  status: number | string;
+  next_billing_time: number | bigint;
+  status: any;
 }
 
 export default function PlanPage() {
@@ -238,10 +238,18 @@ export default function PlanPage() {
           <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-6 text-center">
             <h3 className="text-xl font-bold mb-2">You are subscribed</h3>
             <p className="text-gray-400 mb-6">
-              Status: {subscription.status === 0 ? "Active" : "Canceled"}<br/>
-              Next Billing: {new Date(subscription.next_billing_time * 1000).toLocaleString()}
+              Status: {
+                (subscription.status === 0 || subscription.status === "Active" || (typeof subscription.status === "object" && "Active" in (subscription.status as any)))
+                  ? "Active"
+                  : (subscription.status === 1 || subscription.status === "Canceled" || (typeof subscription.status === "object" && "Canceled" in (subscription.status as any)))
+                  ? "Canceled"
+                  : (subscription.status === 2 || subscription.status === "Paused" || (typeof subscription.status === "object" && "Paused" in (subscription.status as any)))
+                  ? "Paused"
+                  : String(subscription.status)
+              }<br/>
+              Next Billing: {new Date(Number(subscription.next_billing_time) * 1000).toLocaleString()}
             </p>
-            {subscription.status === 0 && (
+            {(subscription.status === 0 || subscription.status === "Active" || (typeof subscription.status === "object" && "Active" in (subscription.status as any))) && (
               <button onClick={handleCancel} disabled={processing} className="px-6 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors font-medium">
                 {processing ? "Processing..." : "Cancel Subscription"}
               </button>
