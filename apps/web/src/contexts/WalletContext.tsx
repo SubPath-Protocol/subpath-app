@@ -19,14 +19,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [network, setNetwork] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem("subpath_wallet");
-    if (stored) {
-      checkConnection();
-    }
-  }, []);
-
-  const checkConnection = async () => {
+  const checkConnection = React.useCallback(async () => {
     try {
       const connected = await isConnected();
       if (connected) {
@@ -38,7 +31,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("subpath_wallet");
+    if (stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void checkConnection();
+    }
+  }, [checkConnection]);
 
   const connect = async () => {
     try {

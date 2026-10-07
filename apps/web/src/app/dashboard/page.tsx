@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import React, { useState, useEffect, useCallback, FormEvent } from "react";
 import { useWallet } from "../../contexts/WalletContext";
 import { getClient } from "../../lib/sdk";
-import { xdr, nativeToScVal, scValToNative, TransactionBuilder, Account } from "@stellar/stellar-sdk";
+import { nativeToScVal, scValToNative, TransactionBuilder, Account } from "@stellar/stellar-sdk";
+
+interface PlanItem {
+  id: number;
+  merchant: string;
+  token: string;
+  amount: bigint;
+  cycle_seconds: number;
+}
 
 export default function DashboardPage() {
   const { address, signAndSubmit } = useWallet();
   const [isCreating, setIsCreating] = useState(false);
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<PlanItem[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
 
   const [tokenAddress, setTokenAddress] = useState("");
@@ -16,16 +24,11 @@ export default function DashboardPage() {
   const [cycle, setCycle] = useState("2592000");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (address) {
-      loadPlans();
-    } else {
+  const loadPlans = useCallback(async () => {
+    if (!address) {
       setPlans([]);
+      return;
     }
-  }, [address]);
-
-  const loadPlans = async () => {
-    if (!address) return;
     setLoadingPlans(true);
     try {
       const client = getClient();
@@ -43,11 +46,11 @@ export default function DashboardPage() {
               [nativeToScVal(address, { type: "address" }).toXDR("base64")]
             ]
           }
-        ] as any,
+        ],
         limit: 100
       });
 
-      const fetchedPlans = [];
+      const fetchedPlans: PlanItem[] = [];
       for (const record of res.events || []) {
         const planId = Number(scValToNative(record.value));
         
@@ -62,7 +65,12 @@ export default function DashboardPage() {
     } finally {
       setLoadingPlans(false);
     }
-  };
+  }, [address]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadPlans();
+  }, [loadPlans]);
 
   const handleCreatePlan = async (e: FormEvent) => {
     e.preventDefault();
@@ -89,15 +97,16 @@ export default function DashboardPage() {
       const signedXdr = await signAndSubmit(tx.toXDR());
       if (signedXdr) {
         const txSubmit = TransactionBuilder.fromXDR(signedXdr, client.config.networkPassphrase);
-        const resp = await client.server.sendTransaction(txSubmit as any);
+        const resp = await client.server.sendTransaction(txSubmit);
         if (resp.status === "ERROR") throw new Error("Transaction rejected by network");
         
         alert("Plan created! Waiting for ledger confirmation...");
         setIsCreating(false);
         setTimeout(() => loadPlans(), 6000);
       }
-    } catch (e: any) {
-      alert("Error: " + e.message);
+    } catch (e: unknown) {
+      const err = e as Error;
+      alert("Error: " + (err.message || String(e)));
     } finally {
       setIsSubmitting(false);
     }

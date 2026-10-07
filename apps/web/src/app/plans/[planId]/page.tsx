@@ -1,22 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWallet } from "../../../contexts/WalletContext";
 import { getClient } from "../../../lib/sdk";
 import { TransactionBuilder, Account } from "@stellar/stellar-sdk";
 
+interface PlanData {
+  merchant: string;
+  token: string;
+  amount: bigint;
+  cycle_seconds: number;
+}
+
+interface SubscriptionData {
+  subscriber: string;
+  plan_id: number;
+  next_billing_time: number;
+  status: number | string;
+}
+
 export default function PlanPage({ params }: { params: { planId: string } }) {
   const { address, signAndSubmit, isConnecting, connect } = useWallet();
-  const [plan, setPlan] = useState<any>(null);
-  const [subscription, setSubscription] = useState<any>(null);
+  const [plan, setPlan] = useState<PlanData | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [params.planId, address]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const client = getClient();
@@ -35,7 +45,12 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.planId, address]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
+  }, [loadData]);
 
   const handleSubscribe = async () => {
     if (!address || !plan) return;
@@ -64,13 +79,14 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
       const signed = await signAndSubmit(tx.toXDR());
       if (signed) {
         const txSubmit = TransactionBuilder.fromXDR(signed, client.config.networkPassphrase);
-        const resp = await client.server.sendTransaction(txSubmit as any);
+        const resp = await client.server.sendTransaction(txSubmit);
         if (resp.status === "ERROR") throw new Error("Transaction rejected");
         alert("Subscribed successfully!");
         setTimeout(() => loadData(), 5000);
       }
-    } catch (e: any) {
-      alert("Error: " + e.message);
+    } catch (e: unknown) {
+      const err = e as Error;
+      alert("Error: " + (err.message || String(e)));
     } finally {
       setProcessing(false);
     }
@@ -94,13 +110,14 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
       const signed = await signAndSubmit(tx.toXDR());
       if (signed) {
         const txSubmit = TransactionBuilder.fromXDR(signed, client.config.networkPassphrase);
-        const resp = await client.server.sendTransaction(txSubmit as any);
+        const resp = await client.server.sendTransaction(txSubmit);
         if (resp.status === "ERROR") throw new Error("Transaction rejected");
         alert("Subscription canceled!");
         setTimeout(() => loadData(), 5000);
       }
-    } catch (e: any) {
-      alert("Error: " + e.message);
+    } catch (e: unknown) {
+      const err = e as Error;
+      alert("Error: " + (err.message || String(e)));
     } finally {
       setProcessing(false);
     }
