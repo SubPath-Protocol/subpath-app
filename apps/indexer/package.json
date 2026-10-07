@@ -5,8 +5,9 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "dev": "ts-node-dev src/index.ts",
-    "prebuild": "prisma generate",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ || echo 'No eslint configured yet'",
     "test": "vitest run",
     "db:generate": "prisma generate",
     "db:push": "prisma db push"

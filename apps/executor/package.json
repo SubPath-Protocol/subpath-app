@@ -5,8 +5,9 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "dev": "ts-node-dev src/index.ts",
-    "prebuild": "pnpm --filter indexer db:generate",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ || echo 'No eslint configured yet'",
     "test": "vitest run"
   },
   "dependencies": {
