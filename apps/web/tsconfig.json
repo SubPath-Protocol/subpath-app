@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@subpath/sdk": ["../../packages/sdk/src/index.ts"]
     }
   },
   "include": [
