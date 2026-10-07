@@ -62,8 +62,7 @@ async function syncEvents(startLedger: number, endLedger: number) {
       filters: [
         {
           type: "contract",
-          contractIds: [client.config.contractId],
-          topics: [["*"]]
+          contractIds: [client.config.contractId]
         }
       ],
       limit: 10000
@@ -99,14 +98,14 @@ async function syncEvents(startLedger: number, endLedger: number) {
               merchant: planData.merchant,
               token: planData.token,
               amount: planData.amount.toString(),
-              cycleSeconds: planData.cycle_seconds
+              cycleSeconds: Number(planData.cycle_seconds)
             },
             create: {
               id: planId,
               merchant: planData.merchant,
               token: planData.token,
               amount: planData.amount.toString(),
-              cycleSeconds: planData.cycle_seconds
+              cycleSeconds: Number(planData.cycle_seconds)
             }
           });
           console.log(`[INDEXER] Processed event plan_add -> Plan #${planId}`);
@@ -120,14 +119,14 @@ async function syncEvents(startLedger: number, endLedger: number) {
             where: { subscriber_planId: { subscriber, planId } },
             update: {
               status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
-              nextBillingTime: subData.next_billing_time,
+              nextBillingTime: Number(subData.next_billing_time),
               lockedAt: null
             },
             create: {
               subscriber,
               planId,
               status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
-              nextBillingTime: subData.next_billing_time
+              nextBillingTime: Number(subData.next_billing_time)
             }
           });
           console.log(`[INDEXER] Processed event sub_new -> Subscriber ${subscriber} on Plan #${planId}`);
@@ -148,7 +147,7 @@ async function syncEvents(startLedger: number, endLedger: number) {
           where: { subscriber, planId },
           data: {
             status: subData ? (subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0) : 1,
-            nextBillingTime: subData ? subData.next_billing_time : Math.floor(Date.now() / 1000),
+            nextBillingTime: subData ? Number(subData.next_billing_time) : Math.floor(Date.now() / 1000),
             lockedAt: null
           }
         });
@@ -170,7 +169,7 @@ async function syncEvents(startLedger: number, endLedger: number) {
             where: { subscriber, planId },
             data: {
               status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
-              nextBillingTime: subData.next_billing_time,
+              nextBillingTime: Number(subData.next_billing_time),
               lockedAt: null
             }
           });
