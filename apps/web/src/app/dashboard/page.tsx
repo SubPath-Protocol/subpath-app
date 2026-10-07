@@ -94,15 +94,34 @@ export default function DashboardPage() {
       .setTimeout(100)
       .build();
 
-      const signedXdr = await signAndSubmit(tx.toXDR());
+      const preparedTx = await client.server.prepareTransaction(tx);
+      const signedXdr = await signAndSubmit(preparedTx.toXDR());
       if (signedXdr) {
         const txSubmit = TransactionBuilder.fromXDR(signedXdr, client.config.networkPassphrase);
         const resp = await client.server.sendTransaction(txSubmit);
-        if (resp.status === "ERROR") throw new Error("Transaction rejected by network");
+        if (resp.status === "ERROR") {
+          throw new Error(`Transaction rejected by network: ${resp.errorResult?.toXDR("base64") || "Simulation/validation error"}`);
+        }
         
-        alert("Plan created! Waiting for ledger confirmation...");
+        // Poll for confirmation
+        let status: string = resp.status;
+        for (let i = 0; i < 15; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          const txStatus = await client.server.getTransaction(resp.hash);
+          status = txStatus.status;
+          if (status !== "NOT_FOUND") break;
+        }
+
+        if (status === "SUCCESS") {
+          alert("Plan created successfully on-chain!");
+        } else if (status === "FAILED") {
+          throw new Error("Transaction execution failed on-chain.");
+        } else {
+          alert(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...). Waiting for ledger confirmation.`);
+        }
+
         setIsCreating(false);
-        setTimeout(() => loadPlans(), 6000);
+        setTimeout(() => loadPlans(), 4000);
       }
     } catch (e: unknown) {
       const err = e as Error;

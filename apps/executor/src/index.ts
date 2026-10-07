@@ -120,8 +120,9 @@ async function pollAndExecute() {
         .setTimeout(100)
         .build();
 
-      tx.sign(keypair);
-      const resp = await client.server.sendTransaction(tx);
+      const preparedTx = await client.server.prepareTransaction(tx);
+      preparedTx.sign(keypair);
+      const resp = await client.server.sendTransaction(preparedTx);
 
       if (resp.status === "PENDING") {
         console.log(`[EXECUTOR] Submitted transaction. Hash: ${resp.hash}`);

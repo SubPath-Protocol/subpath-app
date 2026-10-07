@@ -76,13 +76,30 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
       .setTimeout(100)
       .build();
 
-      const signed = await signAndSubmit(tx.toXDR());
+      const preparedTx = await client.server.prepareTransaction(tx);
+      const signed = await signAndSubmit(preparedTx.toXDR());
       if (signed) {
         const txSubmit = TransactionBuilder.fromXDR(signed, client.config.networkPassphrase);
         const resp = await client.server.sendTransaction(txSubmit);
-        if (resp.status === "ERROR") throw new Error("Transaction rejected");
-        alert("Subscribed successfully!");
-        setTimeout(() => loadData(), 5000);
+        if (resp.status === "ERROR") throw new Error(`Transaction rejected by network: ${resp.errorResult?.toXDR("base64") || "Simulation error"}`);
+        
+        let status: string = resp.status;
+        for (let i = 0; i < 15; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          const txStatus = await client.server.getTransaction(resp.hash);
+          status = txStatus.status;
+          if (status !== "NOT_FOUND") break;
+        }
+
+        if (status === "SUCCESS") {
+          alert("Subscribed successfully!");
+        } else if (status === "FAILED") {
+          throw new Error("Subscription execution failed on-chain.");
+        } else {
+          alert(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...).`);
+        }
+
+        setTimeout(() => loadData(), 4000);
       }
     } catch (e: unknown) {
       const err = e as Error;
@@ -107,13 +124,30 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
       .setTimeout(100)
       .build();
 
-      const signed = await signAndSubmit(tx.toXDR());
+      const preparedTx = await client.server.prepareTransaction(tx);
+      const signed = await signAndSubmit(preparedTx.toXDR());
       if (signed) {
         const txSubmit = TransactionBuilder.fromXDR(signed, client.config.networkPassphrase);
         const resp = await client.server.sendTransaction(txSubmit);
-        if (resp.status === "ERROR") throw new Error("Transaction rejected");
-        alert("Subscription canceled!");
-        setTimeout(() => loadData(), 5000);
+        if (resp.status === "ERROR") throw new Error(`Transaction rejected by network: ${resp.errorResult?.toXDR("base64") || "Simulation error"}`);
+        
+        let status: string = resp.status;
+        for (let i = 0; i < 15; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          const txStatus = await client.server.getTransaction(resp.hash);
+          status = txStatus.status;
+          if (status !== "NOT_FOUND") break;
+        }
+
+        if (status === "SUCCESS") {
+          alert("Subscription canceled!");
+        } else if (status === "FAILED") {
+          throw new Error("Cancellation execution failed on-chain.");
+        } else {
+          alert(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...).`);
+        }
+
+        setTimeout(() => loadData(), 4000);
       }
     } catch (e: unknown) {
       const err = e as Error;
