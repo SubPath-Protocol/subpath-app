@@ -96,11 +96,25 @@ export class SubPathClient {
     );
   }
 
-  executeBilling(caller: string, subscriber: string, planId: number) {
-    return this.contract.call("execute_billing",
-      nativeToScVal(caller, { type: "address" }),
-      nativeToScVal(subscriber, { type: "address" }),
-      nativeToScVal(planId, { type: "u64" })
-    );
+  executeBilling(subscriber: string, planId: number): any;
+  executeBilling(caller: string, subscriber: string, planId: number): any;
+  executeBilling(param1: string, param2: string | number, param3?: number) {
+    if (typeof param2 === "number" || param3 === undefined) {
+      const subscriber = param1;
+      const planId = param2 as number;
+      return this.contract.call("execute_billing",
+        nativeToScVal(subscriber, { type: "address" }),
+        nativeToScVal(planId, { type: "u64" })
+      );
+    } else {
+      const caller = param1;
+      const subscriber = param2 as string;
+      const planId = param3 as number;
+      return this.contract.call("execute_billing",
+        nativeToScVal(caller, { type: "address" }),
+        nativeToScVal(subscriber, { type: "address" }),
+        nativeToScVal(planId, { type: "u64" })
+      );
+    }
   }
 }
