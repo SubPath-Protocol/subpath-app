@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, FormEvent } from "react";
 import { useWallet } from "../../contexts/WalletContext";
 import { getClient } from "../../lib/sdk";
-import { nativeToScVal, scValToNative, TransactionBuilder, Account } from "@stellar/stellar-sdk";
+import { scValToNative, TransactionBuilder, Account } from "@stellar/stellar-sdk";
 
 interface PlanItem {
   id: number;
