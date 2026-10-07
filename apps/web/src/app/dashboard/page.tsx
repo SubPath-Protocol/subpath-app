@@ -151,6 +151,9 @@ export default function DashboardPage() {
             <div>
               <label className="block text-sm text-gray-400 mb-1">Cycle Duration</label>
               <select value={cycle} onChange={e => setCycle(e.target.value)} className="w-full bg-black/50 border border-gray-700 rounded-lg p-2 text-white">
+                <option value="10">10 Seconds (Testnet Demo)</option>
+                <option value="60">1 Minute (Testnet Demo)</option>
+                <option value="3600">Hourly</option>
                 <option value="86400">Daily</option>
                 <option value="604800">Weekly</option>
                 <option value="2592000">Monthly</option>
