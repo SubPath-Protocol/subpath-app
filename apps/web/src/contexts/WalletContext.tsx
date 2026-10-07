@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { isConnected, getAddress, getNetwork, signTransaction } from "@stellar/freighter-api";
+import { isConnected, getAddress, getNetwork, signTransaction, requestAccess, isAllowed } from "@stellar/freighter-api";
 
 interface WalletState {
   address: string | null;
@@ -21,12 +21,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const checkConnection = React.useCallback(async () => {
     try {
-      const connected = await isConnected();
-      if (connected) {
-        const { address: pubKey } = await getAddress();
-        const { network: net } = await getNetwork();
-        setAddress(pubKey || null);
-        setNetwork(net || null);
+      const conn = await isConnected();
+      if (conn && conn.isConnected) {
+        const allowed = await isAllowed();
+        if (allowed && allowed.isAllowed) {
+          const { address: pubKey } = await getAddress();
+          const { network: net } = await getNetwork();
+          setAddress(pubKey || null);
+          setNetwork(net || null);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -44,14 +47,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = async () => {
     try {
       setIsConnecting(true);
-      const connected = await isConnected();
-      if (!connected) {
-        alert("Freighter is not installed or not available. Please install it.");
+      const conn = await isConnected();
+      if (!conn || !conn.isConnected) {
+        alert("Freighter is not installed or not available. Please install it and refresh the page.");
         setIsConnecting(false);
         return;
       }
 
-      const { address: pubKey } = await getAddress();
+      // requestAccess prompts Freighter popup if not already allowed
+      const access = await requestAccess();
+      if (access.error) {
+        alert(typeof access.error === "string" ? access.error : "User rejected wallet connection.");
+        setIsConnecting(false);
+        return;
+      }
+
+      const pubKey = access.address;
       if (pubKey) {
         const { network: net } = await getNetwork();
         
