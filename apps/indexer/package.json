@@ -5,6 +5,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "dev": "ts-node-dev src/index.ts",
+    "prebuild": "prisma generate",
     "build": "tsc",
     "test": "vitest run",
     "db:generate": "prisma generate",

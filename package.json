@@ -4,10 +4,11 @@
   "packageManager": "pnpm@9.12.1",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
-    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter indexer db:generate",
+    "build": "pnpm db:generate && pnpm -r build",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "typecheck": "pnpm db:generate && pnpm -r typecheck",
+    "test": "pnpm db:generate && pnpm -r test"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
