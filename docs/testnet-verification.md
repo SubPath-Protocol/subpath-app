@@ -56,3 +56,36 @@
 ## Verification Methodology
 * **Live Testnet Verification**: Plan creation, allowance approval, subscription, initial token transfer, permissionless recurring billing, pause transition, billing rejection, resume transition, and cancellation transition were verified live on Stellar Testnet.
 * **Automated Unit & Workspace Verification**: SDK methods, Indexer cursor & event idempotency logic, and Executor stale lock recovery logic are verified via automated Vitest test suites.
+
+## Live Infrastructure Verification (Neon PostgreSQL + Indexer + Executor)
+
+* **Verification Date**: 2026-10-07
+* **Database Provider**: Neon Serverless PostgreSQL (`patient-field-56531884` / `ep-dry-paper-b5k91nh0`)
+* **Contract ID**: `CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3`
+* **Indexer Service**: Live background daemon (`apps/indexer`) syncing real contract events to PostgreSQL.
+* **Executor Service**: Live background daemon (`apps/executor`) with dedicated funded keypair (`GBGMYDQE422INIYAMJW7QXHROM3W6XFB6NRPMMJ4XGU3WKX77MGTPSJY`).
+
+### 1. Merchant & Subscriber Accounts
+* **Merchant Account**: `GACU23V4GZ2X3E34WCWJZ56UZWAH2EANAAMD5XOVNRC4VV3L5DDOBNTJ`
+* **Subscriber Account**: `GACU23V4GZ2X3E34WCWJZ56UZWAH2EANAAMD5XOVNRC4VV3L5DDOBNTJ`
+* **Plan ID**: `3`
+* **Billing Cycle**: `10` seconds
+
+### 2. Live On-Chain Transaction Hashes
+* **Merchant Plan #3 Creation (`plan_add`)**:
+  * Transaction: `12eae36a12e3af9f0584ca3bace091593ab394fd12e213f2f18709b9187e6fe6`
+  * Status: `SUCCESS`
+* **Subscriber Allowance Approval (`approve`)**:
+  * Status: `SUCCESS`
+* **Subscription Activation (`sub_new`)**:
+  * Status: `SUCCESS`
+* **Automated Recurring Billing by Executor (`execute_billing` / `sub_billed`)**:
+  * Cycle 1 Tx: `1a859f8d5f525a39d0485b4f509c05a2a48270c7e65f24ba1d02933a1e4f224d` (Status: `SUCCESS`)
+  * Cycle 2 Tx: `6162cd21fc6cb6e2ae6af67e9cdaac905a72a81bb5b9c544239db8dcc16a400d` (Status: `SUCCESS`)
+
+### 3. Database Ingestion & Idempotency
+* **Neon PostgreSQL Synchronized Models**:
+  * `Plan`: Storing Plan #2 and Plan #3 with on-chain configurations.
+  * `Subscription`: Active status, real next billing timestamps, and concurrency locks (`lockedAt`).
+  * `BillingAttempt`: Logged both successful on-chain executions and audit traces.
+  * `IndexerState`: Durable singleton tracking last synchronized ledger sequence.
