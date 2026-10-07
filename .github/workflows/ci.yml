@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
             
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
         
       - name: Generate Prisma Client
         run: pnpm --filter indexer db:generate
