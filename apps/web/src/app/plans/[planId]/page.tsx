@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { useWallet } from "../../../contexts/WalletContext";
 import { getClient } from "../../../lib/sdk";
 import { TransactionBuilder, Account } from "@stellar/stellar-sdk";
@@ -19,7 +20,11 @@ interface SubscriptionData {
   status: number | string;
 }
 
-export default function PlanPage({ params }: { params: { planId: string } }) {
+export default function PlanPage() {
+  const routeParams = useParams();
+  const planIdStr = Array.isArray(routeParams?.planId) ? routeParams.planId[0] : (routeParams?.planId as string) || "";
+  const planId = parseInt(planIdStr);
+
   const { address, signAndSubmit, isConnecting, connect } = useWallet();
   const [plan, setPlan] = useState<PlanData | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
@@ -27,10 +32,13 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
   const [processing, setProcessing] = useState(false);
 
   const loadData = useCallback(async () => {
+    if (isNaN(planId) || planId <= 0) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const client = getClient();
-      const planId = parseInt(params.planId);
       const p = await client.getPlan(planId);
       setPlan(p);
 
@@ -45,7 +53,7 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
     } finally {
       setLoading(false);
     }
-  }, [params.planId, address]);
+  }, [planId, address]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -53,7 +61,7 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
   }, [loadData]);
 
   const handleSubscribe = async () => {
-    if (!address || !plan) return;
+    if (!address || !plan || isNaN(planId)) return;
     setProcessing(true);
     try {
       const client = getClient();
@@ -62,7 +70,7 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
       const expirationLedger = latestLedger.sequence + 100000; 
       
       const approveOp = client.approveToken(plan.token, address, plan.amount * BigInt(100), expirationLedger); 
-      const subOp = client.subscribe(address, parseInt(params.planId));
+      const subOp = client.subscribe(address, planId);
       
       const accountData = await client.server.getAccount(address);
       const source = new Account(address, accountData.sequenceNumber());
@@ -114,7 +122,7 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
     setProcessing(true);
     try {
       const client = getClient();
-      const op = client.cancelSubscription(address, parseInt(params.planId));
+      const op = client.cancelSubscription(address, planId);
       
       const accountData = await client.server.getAccount(address);
       const source = new Account(address, accountData.sequenceNumber());
@@ -163,7 +171,7 @@ export default function PlanPage({ params }: { params: { planId: string } }) {
   return (
     <div className="max-w-2xl mx-auto pt-10 pb-24 animate-in fade-in slide-in-from-bottom-4">
       <div className="glass-panel p-8">
-        <h1 className="text-3xl font-black tracking-tight mb-6">Plan #{params.planId}</h1>
+        <h1 className="text-3xl font-black tracking-tight mb-6">Plan #{planId}</h1>
         
         <div className="space-y-4 mb-8">
           <div className="flex justify-between border-b border-white/10 pb-4">

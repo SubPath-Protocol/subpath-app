@@ -13,11 +13,17 @@ export class SubPathClient {
 
   // --- Reads ---
   async getPlan(planId: number): Promise<Plan | null> {
+    if (typeof planId !== "number" || isNaN(planId) || planId < 0) {
+      return null;
+    }
     const op = this.contract.call("get_plan", nativeToScVal(planId, { type: "u64" }));
     return this.simulateRead<Plan>(op);
   }
 
   async getSubscription(subscriber: string, planId: number): Promise<Subscription | null> {
+    if (typeof planId !== "number" || isNaN(planId) || planId < 0 || !subscriber) {
+      return null;
+    }
     const op = this.contract.call("get_subscription",
       nativeToScVal(new Address(subscriber)),
       nativeToScVal(planId, { type: "u64" })
