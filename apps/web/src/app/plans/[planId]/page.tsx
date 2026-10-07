@@ -69,46 +69,82 @@ export default function PlanPage() {
       const latestLedger = await client.server.getLatestLedger();
       const expirationLedger = latestLedger.sequence + 100000; 
       
+      // Step 1: Approve token allowance on token contract
       const approveOp = client.approveToken(plan.token, address, plan.amount * BigInt(100), expirationLedger); 
-      const subOp = client.subscribe(address, planId);
       
-      const accountData = await client.server.getAccount(address);
-      const source = new Account(address, accountData.sequenceNumber());
+      let accountData = await client.server.getAccount(address);
+      let source = new Account(address, accountData.sequenceNumber());
 
-      const tx = new TransactionBuilder(source, {
+      const approveTx = new TransactionBuilder(source, {
         fee: "10000",
         networkPassphrase: client.config.networkPassphrase,
       })
       .addOperation(approveOp)
+      .setTimeout(100)
+      .build();
+
+      const preparedApproveTx = await client.server.prepareTransaction(approveTx);
+      const signedApprove = await signAndSubmit(preparedApproveTx.toXDR());
+      if (!signedApprove) {
+        throw new Error("Allowance approval was canceled.");
+      }
+
+      const txSubmitApprove = TransactionBuilder.fromXDR(signedApprove, client.config.networkPassphrase);
+      const respApprove = await client.server.sendTransaction(txSubmitApprove);
+      if (respApprove.status === "ERROR") {
+        throw new Error(`Allowance rejected: ${respApprove.errorResult?.toXDR("base64") || "Simulation error"}`);
+      }
+
+      // Poll until allowance is confirmed
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const txStatus = await client.server.getTransaction(respApprove.hash);
+        if (txStatus.status === "SUCCESS") break;
+        if (txStatus.status === "FAILED") throw new Error("Allowance transaction failed on-chain.");
+      }
+
+      // Step 2: Subscribe to the plan
+      const subOp = client.subscribe(address, planId);
+      accountData = await client.server.getAccount(address);
+      source = new Account(address, accountData.sequenceNumber());
+
+      const subTx = new TransactionBuilder(source, {
+        fee: "10000",
+        networkPassphrase: client.config.networkPassphrase,
+      })
       .addOperation(subOp)
       .setTimeout(100)
       .build();
 
-      const preparedTx = await client.server.prepareTransaction(tx);
-      const signed = await signAndSubmit(preparedTx.toXDR());
-      if (signed) {
-        const txSubmit = TransactionBuilder.fromXDR(signed, client.config.networkPassphrase);
-        const resp = await client.server.sendTransaction(txSubmit);
-        if (resp.status === "ERROR") throw new Error(`Transaction rejected by network: ${resp.errorResult?.toXDR("base64") || "Simulation error"}`);
-        
-        let status: string = resp.status;
-        for (let i = 0; i < 15; i++) {
-          await new Promise((r) => setTimeout(r, 1000));
-          const txStatus = await client.server.getTransaction(resp.hash);
-          status = txStatus.status;
-          if (status !== "NOT_FOUND") break;
-        }
-
-        if (status === "SUCCESS") {
-          alert("Subscribed successfully!");
-        } else if (status === "FAILED") {
-          throw new Error("Subscription execution failed on-chain.");
-        } else {
-          alert(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...).`);
-        }
-
-        setTimeout(() => loadData(), 4000);
+      const preparedSubTx = await client.server.prepareTransaction(subTx);
+      const signedSub = await signAndSubmit(preparedSubTx.toXDR());
+      if (!signedSub) {
+        throw new Error("Subscription signature was canceled.");
       }
+
+      const txSubmitSub = TransactionBuilder.fromXDR(signedSub, client.config.networkPassphrase);
+      const respSub = await client.server.sendTransaction(txSubmitSub);
+      if (respSub.status === "ERROR") {
+        throw new Error(`Subscription rejected: ${respSub.errorResult?.toXDR("base64") || "Simulation error"}`);
+      }
+
+      let subStatus: string = respSub.status;
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const txStatus = await client.server.getTransaction(respSub.hash);
+        subStatus = txStatus.status;
+        if (subStatus !== "NOT_FOUND") break;
+      }
+
+      if (subStatus === "SUCCESS") {
+        alert("Subscribed successfully! Your recurring subscription is now active.");
+      } else if (subStatus === "FAILED") {
+        throw new Error("Subscription execution failed on-chain.");
+      } else {
+        alert(`Subscription submitted (hash: ${respSub.hash.substring(0, 8)}...).`);
+      }
+
+      setTimeout(() => loadData(), 3000);
     } catch (e: unknown) {
       const err = e as Error;
       alert("Error: " + (err.message || String(e)));
