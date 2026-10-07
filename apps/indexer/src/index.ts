@@ -1,6 +1,6 @@
-import { SubPathClient } from "@subpath/sdk";
+import { SubPathClient, SubscriptionStatus } from "@subpath/sdk";
 import { PrismaClient } from "@prisma/client";
-import { xdr, scValToNative } from "@stellar/stellar-sdk";
+import { scValToNative } from "@stellar/stellar-sdk";
 import * as dotenv from "dotenv";
 
 dotenv.config({ path: "../../.env.local" });
@@ -15,63 +15,187 @@ const client = new SubPathClient({
 });
 
 async function run() {
-  console.log("Starting SubPath PostgreSQL Indexer...");
-  
-  let lastSyncedLedger = 0;
-  
+  console.log("Starting SubPath Durable PostgreSQL Indexer...");
+
+  // Phase 11: Cursor Persistence - Restore cursor from Database
+  let state = await prisma.indexerState.findUnique({
+    where: { id: "singleton" }
+  });
+
+  if (!state) {
+    const latestLedger = await client.server.getLatestLedger();
+    const startLedger = Math.max(1, latestLedger.sequence - 1000);
+    state = await prisma.indexerState.create({
+      data: { id: "singleton", lastSyncedLedger: startLedger }
+    });
+    console.log(`Initialized IndexerState singleton with start ledger ${startLedger}`);
+  }
+
+  let lastSyncedLedger = state.lastSyncedLedger;
+
   while (true) {
     try {
       const latestLedger = await client.server.getLatestLedger();
-      if (lastSyncedLedger === 0) {
-        lastSyncedLedger = Math.max(1, latestLedger.sequence - 1000); // Start indexing
-      }
-
       if (latestLedger.sequence > lastSyncedLedger) {
-        console.log(`Syncing ledgers ${lastSyncedLedger} to ${latestLedger.sequence}`);
-        await syncEvents(lastSyncedLedger);
+        console.log(`Indexing ledgers ${lastSyncedLedger + 1} to ${latestLedger.sequence}`);
+        await syncEvents(lastSyncedLedger + 1, latestLedger.sequence);
         lastSyncedLedger = latestLedger.sequence;
+
+        await prisma.indexerState.update({
+          where: { id: "singleton" },
+          data: { lastSyncedLedger }
+        });
       }
     } catch (e) {
-      console.error("Indexer error:", e);
+      console.error("Indexer poll loop error:", e);
     }
-    // Poll every 10 seconds (Stellar closes a ledger every ~5s)
+    // Poll every 10 seconds
     await new Promise(r => setTimeout(r, 10000));
   }
 }
 
-async function syncEvents(startLedger: number) {
-  const res = await client.server.getEvents({
-    startLedger,
-    filters: [
-      {
-        type: "contract",
-        contractIds: [client.config.contractId],
-        topics: [["*"]]
-      }
-    ],
-    limit: 10000
-  });
+async function syncEvents(startLedger: number, endLedger: number) {
+  let res;
+  try {
+    res = await client.server.getEvents({
+      startLedger,
+      filters: [
+        {
+          type: "contract",
+          contractIds: [client.config.contractId],
+          topics: [["*"]]
+        }
+      ],
+      limit: 10000
+    });
+  } catch (err) {
+    console.error(`Failed to fetch contract events from ledger ${startLedger}:`, err);
+    return;
+  }
 
-  for (const event of res.events || []) {
+  for (let i = 0; i < (res.events || []).length; i++) {
+    const event = res.events[i];
+    const eventId = event.id || `${event.ledger}:${event.txHash}:${i}`;
+
+    // Phase 12: Event Idempotency Check
+    const existing = await prisma.processedEvent.findUnique({
+      where: { eventId }
+    });
+    if (existing) {
+      continue; // Skip already indexed event
+    }
+
     const topic1 = event.topic[0] ? scValToNative(event.topic[0]) : null;
-    
-    if (topic1 === "plan_add") {
-       const planId = Number(scValToNative(event.value));
-       const planData = await client.getPlan(planId);
-       if (planData) {
-         await prisma.plan.upsert({
-           where: { id: planId },
-           update: {},
-           create: {
-             id: planId,
-             merchant: planData.merchant,
-             token: planData.token,
-             amount: planData.amount.toString(),
-             cycleSeconds: planData.cycle_seconds
-           }
-         });
-         console.log(`Indexed new Plan #${planId}`);
-       }
+    const topic2 = event.topic[1] ? scValToNative(event.topic[1]) : null;
+
+    try {
+      if (topic1 === "plan_add") {
+        const planId = Number(scValToNative(event.value));
+        const planData = await client.getPlan(planId);
+        if (planData) {
+          await prisma.plan.upsert({
+            where: { id: planId },
+            update: {
+              merchant: planData.merchant,
+              token: planData.token,
+              amount: planData.amount.toString(),
+              cycleSeconds: planData.cycle_seconds
+            },
+            create: {
+              id: planId,
+              merchant: planData.merchant,
+              token: planData.token,
+              amount: planData.amount.toString(),
+              cycleSeconds: planData.cycle_seconds
+            }
+          });
+          console.log(`[INDEXER] Processed event plan_add -> Plan #${planId}`);
+        }
+      } else if (topic1 === "sub_new") {
+        const subscriber = String(topic2 || "");
+        const planId = Number(scValToNative(event.value));
+        const subData = await client.getSubscription(subscriber, planId);
+        if (subData) {
+          await prisma.subscription.upsert({
+            where: { subscriber_planId: { subscriber, planId } },
+            update: {
+              status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
+              nextBillingTime: subData.next_billing_time,
+              lockedAt: null
+            },
+            create: {
+              subscriber,
+              planId,
+              status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
+              nextBillingTime: subData.next_billing_time
+            }
+          });
+          console.log(`[INDEXER] Processed event sub_new -> Subscriber ${subscriber} on Plan #${planId}`);
+        }
+      } else if (topic1 === "sub_pause") {
+        const subscriber = String(topic2 || "");
+        const planId = Number(scValToNative(event.value));
+        await prisma.subscription.updateMany({
+          where: { subscriber, planId },
+          data: { status: 3, lockedAt: null } // 3 = PAUSED
+        });
+        console.log(`[INDEXER] Processed event sub_pause -> Subscriber ${subscriber} on Plan #${planId}`);
+      } else if (topic1 === "sub_resume") {
+        const subscriber = String(topic2 || "");
+        const planId = Number(scValToNative(event.value));
+        const subData = await client.getSubscription(subscriber, planId);
+        await prisma.subscription.updateMany({
+          where: { subscriber, planId },
+          data: {
+            status: subData ? (subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0) : 1,
+            nextBillingTime: subData ? subData.next_billing_time : Math.floor(Date.now() / 1000),
+            lockedAt: null
+          }
+        });
+        console.log(`[INDEXER] Processed event sub_resume -> Subscriber ${subscriber} on Plan #${planId}`);
+      } else if (topic1 === "sub_end" || topic1 === "sub_cancel") {
+        const subscriber = String(topic2 || "");
+        const planId = Number(scValToNative(event.value));
+        await prisma.subscription.updateMany({
+          where: { subscriber, planId },
+          data: { status: 0, lockedAt: null } // 0 = CANCELED
+        });
+        console.log(`[INDEXER] Processed event sub_cancel -> Subscriber ${subscriber} on Plan #${planId}`);
+      } else if (topic1 === "sub_billed") {
+        const subscriber = String(topic2 || "");
+        const planId = Number(scValToNative(event.value));
+        const subData = await client.getSubscription(subscriber, planId);
+        if (subData) {
+          await prisma.subscription.updateMany({
+            where: { subscriber, planId },
+            data: {
+              status: subData.status === SubscriptionStatus.Active ? 1 : subData.status === SubscriptionStatus.Paused ? 3 : 0,
+              nextBillingTime: subData.next_billing_time,
+              lockedAt: null
+            }
+          });
+        }
+        await prisma.billingAttempt.create({
+          data: {
+            subscriber,
+            planId,
+            status: "SUCCESS",
+            txHash: event.txHash || null
+          }
+        });
+        console.log(`[INDEXER] Processed event sub_billed -> Billed ${subscriber} for Plan #${planId}`);
+      }
+
+      // Mark event as processed
+      await prisma.processedEvent.create({
+        data: {
+          eventId,
+          eventType: String(topic1 || "unknown"),
+          ledger: event.ledger || endLedger
+        }
+      });
+    } catch (err) {
+      console.error(`Error processing event ${eventId}:`, err);
     }
   }
 }

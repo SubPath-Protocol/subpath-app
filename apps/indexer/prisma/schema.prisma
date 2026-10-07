@@ -21,12 +21,37 @@ model Plan {
 model Subscription {
   subscriber       String
   planId           Int
-  status           Int
+  status           Int      // 0 = CANCELED, 1 = ACTIVE, 2 = PROCESSING, 3 = PAUSED
   nextBillingTime  Int
+  lastBilledAt     Int?
+  lockedAt         DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   plan             Plan     @relation(fields: [planId], references: [id])
 
   @@id([subscriber, planId])
+}
+
+model IndexerState {
+  id               String   @id @default("singleton")
+  lastSyncedLedger Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model ProcessedEvent {
+  eventId          String   @id
+  eventType        String
+  ledger           Int
+  createdAt        DateTime @default(now())
+}
+
+model BillingAttempt {
+  id               String   @id @default(uuid())
+  subscriber       String
+  planId           Int
+  status           String   // SUCCESS, FAILED, PENDING
+  txHash           String?
+  errorMessage     String?
+  createdAt        DateTime @default(now())
 }

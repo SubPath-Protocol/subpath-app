@@ -6,6 +6,7 @@
     "start": "ts-node src/index.ts",
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
+    "test": "vitest run",
     "db:generate": "prisma generate",
     "db:push": "prisma db push"
   },
@@ -19,6 +20,7 @@
     "prisma": "^5.10.0",
     "typescript": "^5.0.0",
     "ts-node": "^10.9.1",
-    "ts-node-dev": "^2.0.0"
+    "ts-node-dev": "^2.0.0",
+    "vitest": "^2.1.8"
   }
 }
