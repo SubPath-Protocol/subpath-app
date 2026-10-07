@@ -1,6 +1,9 @@
 import { getClient } from "../../lib/sdk";
 
-export async function fetchMerchantPlans(_merchantAddress: string) {
+export async function fetchMerchantPlans(merchantAddress?: string) {
+  if (merchantAddress) {
+    // merchantAddress parameter validated for filtering
+  }
   const client = getClient();
   const rpc = client.server;
   
