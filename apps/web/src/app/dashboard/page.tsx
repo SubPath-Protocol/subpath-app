@@ -33,32 +33,67 @@ export default function DashboardPage() {
     try {
       const client = getClient();
       const latestLedger = await client.server.getLatestLedger();
-      const startLedger = Math.max(1, latestLedger.sequence - 50000);
+      const startLedger = Math.max(1, latestLedger.sequence - 2000);
 
       const res = await client.server.getEvents({
         startLedger,
         filters: [
           {
             type: "contract",
-            contractIds: [client.config.contractId],
-            topics: [
-              [nativeToScVal("plan_add", { type: "symbol" }).toXDR("base64")],
-              [nativeToScVal(address, { type: "address" }).toXDR("base64")]
-            ]
+            contractIds: [client.config.contractId]
           }
         ],
         limit: 100
       });
 
       const fetchedPlans: PlanItem[] = [];
+      const seenPlanIds = new Set<number>();
+
       for (const record of res.events || []) {
-        const planId = Number(scValToNative(record.value));
-        
-        const planState = await client.getPlan(planId);
-        if (planState) {
-          fetchedPlans.push({ id: planId, ...planState });
+        try {
+          const sym = scValToNative(record.topic[0]);
+          const merchant = scValToNative(record.topic[1]);
+          const planId = Number(scValToNative(record.value));
+
+          if (sym === "plan_add" && merchant === address && !seenPlanIds.has(planId)) {
+            seenPlanIds.add(planId);
+            const planState = await client.getPlan(planId);
+            if (planState) {
+              fetchedPlans.push({
+                id: planId,
+                merchant: planState.merchant,
+                token: planState.token,
+                amount: BigInt(planState.amount),
+                cycle_seconds: Number(planState.cycle_seconds)
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Error parsing event record:", err);
         }
       }
+
+      // Check recent plan IDs directly from contract storage as fallback
+      for (let id = 1; id <= 10; id++) {
+        if (!seenPlanIds.has(id)) {
+          try {
+            const planState = await client.getPlan(id);
+            if (planState && planState.merchant === address) {
+              seenPlanIds.add(id);
+              fetchedPlans.push({
+                id,
+                merchant: planState.merchant,
+                token: planState.token,
+                amount: BigInt(planState.amount),
+                cycle_seconds: Number(planState.cycle_seconds)
+              });
+            }
+          } catch {
+            // Plan does not exist
+          }
+        }
+      }
+
       setPlans(fetchedPlans);
     } catch (e) {
       console.error(e);
