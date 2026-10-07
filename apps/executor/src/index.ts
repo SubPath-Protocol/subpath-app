@@ -109,7 +109,7 @@ async function pollAndExecute() {
     }
 
     try {
-      const op = client.executeBilling(keypair.publicKey(), sub.subscriber, sub.planId);
+      const op = client.executeBilling(sub.subscriber, sub.planId);
       const accountData = await client.server.getAccount(keypair.publicKey());
       const source = new Account(keypair.publicKey(), accountData.sequenceNumber());
       const tx = new TransactionBuilder(source, {
