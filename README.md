@@ -1,46 +1,155 @@
-# 🌊 SubPath Application
+<div align="center">
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue?logo=typescript)
-![Drips Wave](https://img.shields.io/badge/Drips-Wave-blueviolet)
+# SubPath Application & Infrastructure
 
-SubPath is a decentralized recurring billing protocol. This repository contains the application layer, comprising a stunning Next.js frontend and a shared TypeScript SDK for interacting with the core Soroban smart contracts.
+**Full-stack web application, SDK, event indexer, and autonomous billing executor for SubPath on Stellar Soroban.**
 
-## 🏗 Architecture Overview
-This is a `pnpm` monorepo containing:
-*   `packages/sdk`: Pure TypeScript wrappers for type-safe interactions with Soroban. Includes `SubPathClient` with all `Reads` and `Writes`.
-*   `apps/web`: The Next.js 14 App Router UI, containing merchant dashboard and subscriber flows with `@stellar/freighter-api`.
-*   `apps/executor`: A reference Node.js executor service for triggering billing cycles.
+[![CI](https://github.com/SubPath-Protocol/subpath-app/actions/workflows/ci.yml/badge.svg)](https://github.com/SubPath-Protocol/subpath-app/actions)
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel)](https://subpath-app.vercel.app)
+[![Testnet](https://img.shields.io/badge/Stellar-Testnet-blue.svg)](https://stellar.expert/explorer/testnet/contract/CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/Release-v0.1.0-emerald.svg)](https://github.com/SubPath-Protocol/subpath-app/releases)
 
-## 🚀 Quick Start
+</div>
+
+---
+
+## Live Deployments & Testnet Verification
+
+* **Live Web Application**: [https://subpath-app.vercel.app](https://subpath-app.vercel.app)
+* **Testnet Contract ID**: [`CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3`](https://stellar.expert/explorer/testnet/contract/CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3)
+* **Network**: Stellar Testnet (`Test SDF Network ; September 2015`)
+* **Deployment Evidence**: [docs/deployment-verification.md](docs/deployment-verification.md)
+* **On-Chain Lifecycle Evidence**: [docs/testnet-verification.md](docs/testnet-verification.md)
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    subgraph Frontend Application
+        UI[apps/web - Next.js 16 UI] -->|SDK Calls| SDK[packages/sdk]
+        UI -->|Multi-Wallet Kit| W[Freighter / Albedo / xBull / Lobstr]
+        W -->|Sign & Submit| RPC[Stellar Soroban RPC]
+    end
+
+    subgraph Smart Contract Layer
+        RPC --> SC[SubPath Smart Contract]
+        SC --> SAC[SEP-41 Token SAC]
+    end
+
+    subgraph Backend Infrastructure
+        RPC -->|getEvents| IDX[apps/indexer - Event Streamer]
+        IDX -->|Write State| DB[(Neon PostgreSQL)]
+        DB -->|Query Due Billings| EXE[apps/executor - Relayer Daemon]
+        EXE -->|execute_billing| RPC
+    end
+```
+
+---
+
+## Monorepo Packages
+
+| Package | Path | Role | Tech Stack |
+| :--- | :--- | :--- | :--- |
+| **`web`** | `apps/web` | Web Dashboard and hosted subscription checkout | Next.js 16, Turbopack, Tailwind CSS, StellarWalletsKit |
+| **`@subpath/sdk`** | `packages/sdk` | Client SDK wrapping Soroban RPC transactions | TypeScript, `@stellar/stellar-sdk` |
+| **`indexer`** | `apps/indexer` | Background daemon streaming contract events | Node.js, Prisma ORM, Neon PostgreSQL |
+| **`executor`** | `apps/executor` | Autonomous billing daemon executing due payments | Node.js, Prisma ORM, Stellar SDK |
+
+---
+
+## Multi-Wallet Support
+
+The web application integrates `@creit.tech/stellar-wallets-kit`, enabling access across both desktop and mobile environments:
+* **Albedo**: Zero-install web popup working on any phone, tablet, or browser without extensions.
+* **Freighter**: The official Stellar browser extension.
+* **xBull**: Browser extension and web bridge.
+* **LOBSTR**: Mobile wallet and signer extension.
+* **Rabet & Hana**: Popular multi-chain and Stellar extensions.
+
+---
+
+## Local Development Setup
 
 ### Prerequisites
-* Node.js v20+
-* pnpm v9+
+* Node.js v20+ or v22+
+* `pnpm` v9.12.1+
 
-### Setup
+### Installation & Build
 ```bash
-# Install dependencies
+# Clone the repository
+git clone https://github.com/SubPath-Protocol/subpath-app.git
+cd subpath-app
+
+# Install workspace dependencies
 pnpm install
 
-# Setup environment variables
-cp apps/web/.env.example apps/web/.env.local
+# Build the client SDK
+pnpm --filter @subpath/sdk build
+
+# Generate database schema client
+pnpm db:generate
+
+# Start the web app locally
+pnpm --filter web dev
 ```
 
-### Development
+### Environment Variables
+Configure `.env` or `.env.local` following `.env.example`:
+
+| Variable | Description | Example / Target |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | Stellar network environment | `testnet` |
+| `NEXT_PUBLIC_STELLAR_RPC_URL` | Soroban RPC provider endpoint | `https://soroban-testnet.stellar.org` |
+| `NEXT_PUBLIC_STELLAR_PASSPHRASE` | Network passphrase | `Test SDF Network ; September 2015` |
+| `NEXT_PUBLIC_SUBPATH_CONTRACT_ID` | Deployed core contract address | `CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` (Neon Serverless) |
+| `EXECUTOR_SECRET_KEY` | Relayer fee funding keypair | `S...` (Testnet account) |
+
+---
+
+## Workspace Commands
+
 ```bash
-pnpm run dev
+# Typecheck all packages
+pnpm typecheck
+
+# Lint workspace
+pnpm lint
+
+# Run unit tests
+pnpm test
+
+# Production workspace build
+pnpm build
 ```
 
-## 🤝 Contributing
-Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and PR process.
+---
 
-## 🛡 Security
-Review our [SECURITY.md](SECURITY.md) for responsible disclosure.
+## Documentation Links
 
-## ✨ Contributors
-Made with [contrib.rocks](https://contrib.rocks).
-<a href="https://github.com/SubPath-Protocol/subpath-app/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=SubPath-Protocol/subpath-app" />
-</a>
+* [Architecture & Monorepo Overview](docs/architecture.md)
+* [Infrastructure & Daemon Design](docs/infrastructure.md)
+* [Operations Runbook](docs/operations.md)
+* [Testnet Lifecycle Verification](docs/testnet-verification.md)
+* [Vercel Deployment Verification](docs/deployment-verification.md)
+* [Changelog](CHANGELOG.md)
+* [Roadmap](ROADMAP.md)
+
+---
+
+## Limitations
+
+* **Testnet Prototype**: Evaluated on Stellar Testnet only. Not audited for Mainnet financial deployments.
+* **Worker Daemons**: Recurring billing automation relies on persistent background processes (`apps/indexer`, `apps/executor`) rather than serverless functions.
+* **Allowance Prerequisite**: Recurring charges require active subscriber token allowances authorized via client wallets.
+
+---
+
+## Contributing & License
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+Licensed under the [MIT License](LICENSE).
