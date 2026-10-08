@@ -8,8 +8,11 @@ dotenv.config({ path: "../../.env" });
 const prisma = new PrismaClient();
 const horizon = new Horizon.Server("https://horizon-testnet.stellar.org");
 
-const merchantKp = Keypair.fromSecret("SDGIDYCYKLONP5QUH2PZL3V4L6232RNDH5DO7PX72XIIPX5GT22V7AWC");
-const subscriberKp = Keypair.fromSecret("SBZ267QP5IDEGW5PKFFUGXZ2BUWETFPLOQQ65Q6QADFSNMQYOQ3RATZJ");
+const merchantSecret = process.env.TEST_MERCHANT_SECRET || process.env.EXECUTOR_SECRET;
+const subscriberSecret = process.env.TEST_SUBSCRIBER_SECRET;
+
+const merchantKp = merchantSecret ? Keypair.fromSecret(merchantSecret) : Keypair.random();
+const subscriberKp = subscriberSecret ? Keypair.fromSecret(subscriberSecret) : Keypair.random();
 
 const client = new SubPathClient({
   networkPassphrase: Networks.TESTNET,
