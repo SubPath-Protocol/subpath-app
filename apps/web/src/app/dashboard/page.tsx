@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, FormEvent } from "react";
 import { useWallet } from "../../contexts/WalletContext";
 import { getClient } from "../../lib/sdk";
 import { scValToNative, TransactionBuilder, Account } from "@stellar/stellar-sdk";
+import { toast } from "sonner";
 
 interface PlanItem {
   id: number;
@@ -109,7 +110,7 @@ export default function DashboardPage() {
 
   const handleCreatePlan = async (e: FormEvent) => {
     e.preventDefault();
-    if (!address) return alert("Connect wallet first!");
+    if (!address) return toast.error("Connect wallet first!");
     
     setIsSubmitting(true);
     try {
@@ -148,11 +149,11 @@ export default function DashboardPage() {
         }
 
         if (status === "SUCCESS") {
-          alert("Plan created successfully on-chain!");
+          toast.success("Plan created successfully on-chain!");
         } else if (status === "FAILED") {
           throw new Error("Transaction execution failed on-chain.");
         } else {
-          alert(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...). Waiting for ledger confirmation.`);
+          toast.info(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...). Waiting for ledger confirmation.`);
         }
 
         setIsCreating(false);
@@ -160,7 +161,7 @@ export default function DashboardPage() {
       }
     } catch (e: unknown) {
       const err = e as Error;
-      alert("Error: " + (err.message || String(e)));
+      toast.error("Error: " + (err.message || String(e)));
     } finally {
       setIsSubmitting(false);
     }

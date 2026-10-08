@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useWallet } from "../../../contexts/WalletContext";
 import { getClient } from "../../../lib/sdk";
 import { TransactionBuilder, Account } from "@stellar/stellar-sdk";
+import { toast } from "sonner";
 
 interface PlanData {
   merchant: string;
@@ -137,17 +138,17 @@ export default function PlanPage() {
       }
 
       if (subStatus === "SUCCESS") {
-        alert("Subscribed successfully! Your recurring subscription is now active.");
+        toast.success("Subscribed successfully! Your recurring subscription is now active.");
       } else if (subStatus === "FAILED") {
         throw new Error("Subscription execution failed on-chain.");
       } else {
-        alert(`Subscription submitted (hash: ${respSub.hash.substring(0, 8)}...).`);
+        toast.info(`Subscription submitted (hash: ${respSub.hash.substring(0, 8)}...).`);
       }
 
       setTimeout(() => loadData(), 3000);
     } catch (e: unknown) {
       const err = e as Error;
-      alert("Error: " + (err.message || String(e)));
+      toast.error("Error: " + (err.message || String(e)));
     } finally {
       setProcessing(false);
     }
@@ -184,18 +185,18 @@ export default function PlanPage() {
         }
 
         if (status === "SUCCESS") {
-          alert("Subscription canceled!");
+          toast.success("Subscription canceled!");
         } else if (status === "FAILED") {
           throw new Error("Cancellation execution failed on-chain.");
         } else {
-          alert(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...).`);
+          toast.info(`Transaction submitted (hash: ${resp.hash.substring(0, 8)}...).`);
         }
 
         setTimeout(() => loadData(), 4000);
       }
     } catch (e: unknown) {
       const err = e as Error;
-      alert("Error: " + (err.message || String(e)));
+      toast.error("Error: " + (err.message || String(e)));
     } finally {
       setProcessing(false);
     }

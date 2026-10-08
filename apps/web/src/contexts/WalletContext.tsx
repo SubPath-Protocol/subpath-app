@@ -13,6 +13,7 @@ import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
 import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
 import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
 import { HanaModule } from "@creit.tech/stellar-wallets-kit/modules/hana";
+import { toast } from "sonner";
 
 interface WalletState {
   address: string | null;
@@ -111,7 +112,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         console.log("Wallet selection modal closed.");
       } else {
         console.error("Wallet connection error:", e);
-        alert(err?.message || "Failed to connect wallet.");
+        toast.error(err?.message || "Failed to connect wallet.");
       }
     } finally {
       setIsConnecting(false);
@@ -144,14 +145,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!res || !res.signedTxXdr) {
-        alert("Transaction signing was rejected.");
+        toast.error("Transaction signing was rejected.");
         return null;
       }
       return res.signedTxXdr;
     } catch (e: unknown) {
       console.error("Transaction signing error:", e);
       const err = e as { message?: string };
-      alert(err?.message || "Error signing transaction.");
+      toast.error(err?.message || "Error signing transaction.");
       return null;
     }
   };

@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import { WalletProvider } from "../contexts/WalletContext";
 import { ConnectWalletButton } from "../components/ConnectWalletButton";
+import { Toaster } from "sonner";
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} ${outfit.variable} font-sans antialiased text-white selection:bg-indigo-500/30`}>
+        <Toaster theme="dark" position="top-center" />
         <WalletProvider>
           <nav className="fixed w-full z-50 glass-nav px-6 py-4 transition-all duration-300">
             <div className="max-w-7xl mx-auto flex justify-between items-center">
