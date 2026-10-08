@@ -1,13 +1,42 @@
 # Contributing to SubPath
 
-We love your input! We want to make contributing to this project as easy and transparent as possible.
+Thank you for contributing to the SubPath monorepo.
 
-## Pull Request Process
-1. Please open an issue to discuss your intended changes before writing code.
-2. Ensure any install or build dependencies are removed before the end of the layer when doing a build.
-3. Update the README.md with details of changes to the interface, if applicable.
-4. Your PR must pass all standard GitHub Action checks (tests, lints, formatting) before being reviewed.
-5. You may merge the Pull Request once you have the sign-off of at least one core maintainer.
+## Workspace Structure
 
-## Code of Conduct
-We adhere to the Contributor Covenant. By participating, you are expected to uphold this code.
+* `apps/web`: Next.js 16 web application and dashboard.
+* `apps/indexer`: Background ledger poller syncing Soroban events to PostgreSQL.
+* `apps/executor`: Background automated recurring billing execution service.
+* `packages/sdk`: TypeScript client SDK wrapping Soroban contracts.
+
+## Development Setup
+
+### Prerequisites
+* Node.js (v20 or v22)
+* `pnpm` (v9.12.1 or later): `corepack enable pnpm`
+
+### Setup Commands
+```bash
+# Install dependencies
+pnpm install
+
+# Build SDK package
+pnpm --filter @subpath/sdk build
+
+# Generate database client
+pnpm db:generate
+
+# Workspace verification commands
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+```
+
+## Pull Request Guidelines
+
+1. **One Logical Change Per Commit**: Keep commits atomic and clearly titled.
+2. **Commit Style**: Use conventional commit messages (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`).
+3. **No Co-Author Lines**: Do not add automated AI co-author attribution.
+4. **No Secrets**: Never commit `.env` files, database passwords, or Stellar private seeds.
+5. **Passing CI**: All Pull Requests must pass GitHub Actions CI (`lint`, `typecheck`, `test`, `build`) before review.
