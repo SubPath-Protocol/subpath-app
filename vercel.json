@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm --filter @subpath/sdk build && pnpm --filter web build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs"
+}
