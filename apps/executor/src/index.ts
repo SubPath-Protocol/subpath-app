@@ -3,10 +3,11 @@ import { Keypair, TransactionBuilder, Account } from "@stellar/stellar-sdk";
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
 
+dotenv.config();
 dotenv.config({ path: "../../.env.local" });
 dotenv.config({ path: "../../.env" });
 
-const EXECUTOR_SECRET = process.env.EXECUTOR_SECRET;
+const EXECUTOR_SECRET = process.env.EXECUTOR_SECRET || process.env.EXECUTOR_SECRET_KEY;
 if (!EXECUTOR_SECRET) {
   console.warn("EXECUTOR_SECRET is missing. Executor will run in dry-run mode.");
 }
@@ -14,18 +15,37 @@ if (!EXECUTOR_SECRET) {
 const keypair = EXECUTOR_SECRET ? Keypair.fromSecret(EXECUTOR_SECRET) : null;
 const prisma = new PrismaClient();
 
+const contractId = process.env.SUBPATH_CONTRACT_ID || process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "";
+const rpcUrl = process.env.STELLAR_RPC_URL || process.env.NEXT_PUBLIC_STELLAR_RPC_URL || "https://soroban-testnet.stellar.org";
+const networkPassphrase = process.env.STELLAR_PASSPHRASE || process.env.NEXT_PUBLIC_STELLAR_PASSPHRASE || "Test SDF Network ; September 2015";
+
 const client = new SubPathClient({
-  contractId: process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "",
-  rpcUrl: process.env.NEXT_PUBLIC_STELLAR_RPC_URL || "https://soroban-testnet.stellar.org",
-  networkPassphrase: process.env.NEXT_PUBLIC_STELLAR_PASSPHRASE || "Test SDF Network ; September 2015"
+  contractId,
+  rpcUrl,
+  networkPassphrase
 });
+
+let isRunning = true;
+const shutdown = async (signal: string) => {
+  console.log(`Received ${signal}, shutting down executor gracefully...`);
+  isRunning = false;
+  try {
+    await prisma.$disconnect();
+  } catch (err) {
+    console.error("Error disconnecting Prisma:", err);
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 const STALE_LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 async function run() {
   console.log(`Starting SubPath Production Executor with public key: ${keypair?.publicKey() || "DRY RUN"}`);
 
-  while (true) {
+  while (isRunning) {
     try {
       // Phase 15: Crash Recovery - Recover stale processing locks
       await recoverStaleLocks();
@@ -35,8 +55,10 @@ async function run() {
     } catch (e) {
       console.error("Executor run loop error:", e);
     }
-    // Poll every 30 seconds
-    await new Promise(r => setTimeout(r, 30000));
+    // Poll every 30 seconds, checking isRunning each second
+    for (let i = 0; i < 30 && isRunning; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
   }
 }
 

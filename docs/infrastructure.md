@@ -85,3 +85,36 @@ model IndexerState {
 * **Failure Handling**:
   * If a subscriber has revoked their token allowance or has insufficient balance, the on-chain transfer fails safely without disrupting other subscriptions.
   * Stale locks are handled to prevent concurrent double-execution of the same subscription cycle.
+
+---
+
+## 4. Container Topology & Cloud Deployment
+
+SubPath cleanly separates stateless user-facing web experiences from persistent daemon workloads:
+
+```text
+┌─────────────────────────────────┐
+│        Vercel (Edge/Serverless) │
+│  apps/web (Next.js 14)          │
+└───────────────┬─────────────────┘
+                │ Reads & Writes
+                ▼
+┌─────────────────────────────────┐
+│      Neon Serverless Postgres   │
+└───────┬─────────────────▲───────┘
+        │                 │
+ Reads  ▼          Writes │
+┌──────────────────┐    ┌─┴────────────────┐
+│ subpath-executor │    │ subpath-indexer  │
+│ (Cloud Worker)   │    │ (Cloud Worker)   │
+└────────┬─────────┘    └─────────▲────────┘
+         │ Submits tx             │ Polls events
+         ▼                        │
+┌─────────────────────────────────┴────────┐
+│      Stellar Soroban Testnet RPC         │
+│  (Contract: CC4ZFZ...NIKWLUV3)           │
+└──────────────────────────────────────────┘
+```
+
+Both daemons are packaged with self-contained Docker images (`Dockerfile.indexer` and `Dockerfile.executor`) and orchestrated via `docker-compose.yml`, `render.yaml` (Render Blueprints), or Railway.
+

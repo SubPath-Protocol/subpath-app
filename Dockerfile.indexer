@@ -1,0 +1,40 @@
+# ==============================================================================
+# SubPath Indexer Daemon Dockerfile
+# Multi-stage container for persistent blockchain ledger and event synchronization
+# ==============================================================================
+
+FROM node:20-slim
+
+# Install OpenSSL (required by Prisma) and ca-certificates
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Install pnpm matching packageManager
+RUN npm install -g pnpm@9.12.1
+
+WORKDIR /app
+
+# Copy workspace manifests for dependency caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY packages/sdk/package.json ./packages/sdk/
+COPY apps/indexer/package.json ./apps/indexer/
+COPY apps/executor/package.json ./apps/executor/
+
+# Install monorepo dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy Prisma schema and generate Prisma Client
+COPY apps/indexer/prisma ./apps/indexer/prisma
+RUN pnpm --filter indexer db:generate
+
+# Copy SDK source code and build
+COPY packages/sdk ./packages/sdk
+RUN pnpm --filter @subpath/sdk build
+
+# Copy indexer source code and build
+COPY apps/indexer ./apps/indexer
+RUN pnpm --filter indexer build
+
+ENV NODE_ENV=production
+
+# Start indexer daemon
+CMD ["pnpm", "--filter", "indexer", "start"]

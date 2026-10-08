@@ -1,0 +1,48 @@
+services:
+  - type: worker
+    name: subpath-indexer
+    runtime: docker
+    dockerfilePath: Dockerfile.indexer
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUBPATH_CONTRACT_ID
+        value: CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3
+      - key: NEXT_PUBLIC_SUBPATH_CONTRACT_ID
+        value: CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3
+      - key: STELLAR_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: NEXT_PUBLIC_STELLAR_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: STELLAR_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      - key: NEXT_PUBLIC_STELLAR_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      - key: STELLAR_NETWORK
+        value: testnet
+
+  - type: worker
+    name: subpath-executor
+    runtime: docker
+    dockerfilePath: Dockerfile.executor
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: EXECUTOR_SECRET
+        sync: false
+      - key: SUBPATH_CONTRACT_ID
+        value: CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3
+      - key: NEXT_PUBLIC_SUBPATH_CONTRACT_ID
+        value: CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3
+      - key: STELLAR_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: NEXT_PUBLIC_STELLAR_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: STELLAR_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      - key: NEXT_PUBLIC_STELLAR_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      - key: STELLAR_NETWORK
+        value: testnet

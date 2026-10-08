@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile.indexer
+    container_name: subpath-indexer
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SUBPATH_CONTRACT_ID=${SUBPATH_CONTRACT_ID:-CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3}
+      - NEXT_PUBLIC_SUBPATH_CONTRACT_ID=${NEXT_PUBLIC_SUBPATH_CONTRACT_ID:-CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3}
+      - STELLAR_RPC_URL=${STELLAR_RPC_URL:-https://soroban-testnet.stellar.org}
+      - NEXT_PUBLIC_STELLAR_RPC_URL=${NEXT_PUBLIC_STELLAR_RPC_URL:-https://soroban-testnet.stellar.org}
+      - STELLAR_PASSPHRASE=${STELLAR_PASSPHRASE:-Test SDF Network ; September 2015}
+      - NEXT_PUBLIC_STELLAR_PASSPHRASE=${NEXT_PUBLIC_STELLAR_PASSPHRASE:-Test SDF Network ; September 2015}
+      - STELLAR_NETWORK=${STELLAR_NETWORK:-testnet}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  executor:
+    build:
+      context: .
+      dockerfile: Dockerfile.executor
+    container_name: subpath-executor
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SUBPATH_CONTRACT_ID=${SUBPATH_CONTRACT_ID:-CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3}
+      - NEXT_PUBLIC_SUBPATH_CONTRACT_ID=${NEXT_PUBLIC_SUBPATH_CONTRACT_ID:-CC4ZFZ64RQ6CG3PTBNDB4A6YB7SJEW2NZ56YNNBBZVC7HDQTNIKWLUV3}
+      - STELLAR_RPC_URL=${STELLAR_RPC_URL:-https://soroban-testnet.stellar.org}
+      - NEXT_PUBLIC_STELLAR_RPC_URL=${NEXT_PUBLIC_STELLAR_RPC_URL:-https://soroban-testnet.stellar.org}
+      - STELLAR_PASSPHRASE=${STELLAR_PASSPHRASE:-Test SDF Network ; September 2015}
+      - NEXT_PUBLIC_STELLAR_PASSPHRASE=${NEXT_PUBLIC_STELLAR_PASSPHRASE:-Test SDF Network ; September 2015}
+      - STELLAR_NETWORK=${STELLAR_NETWORK:-testnet}
+      - EXECUTOR_SECRET=${EXECUTOR_SECRET:-}
+      - EXECUTOR_SECRET_KEY=${EXECUTOR_SECRET_KEY:-}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -3,16 +3,36 @@ import { PrismaClient } from "@prisma/client";
 import { scValToNative } from "@stellar/stellar-sdk";
 import * as dotenv from "dotenv";
 
+dotenv.config();
 dotenv.config({ path: "../../.env.local" });
 dotenv.config({ path: "../../.env" });
 
 const prisma = new PrismaClient();
 
+const contractId = process.env.SUBPATH_CONTRACT_ID || process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "";
+const rpcUrl = process.env.STELLAR_RPC_URL || process.env.NEXT_PUBLIC_STELLAR_RPC_URL || "https://soroban-testnet.stellar.org";
+const networkPassphrase = process.env.STELLAR_PASSPHRASE || process.env.NEXT_PUBLIC_STELLAR_PASSPHRASE || "Test SDF Network ; September 2015";
+
 const client = new SubPathClient({
-  contractId: process.env.NEXT_PUBLIC_SUBPATH_CONTRACT_ID || "",
-  rpcUrl: process.env.NEXT_PUBLIC_STELLAR_RPC_URL || "https://soroban-testnet.stellar.org",
-  networkPassphrase: process.env.NEXT_PUBLIC_STELLAR_PASSPHRASE || "Test SDF Network ; September 2015"
+  contractId,
+  rpcUrl,
+  networkPassphrase
 });
+
+let isRunning = true;
+const shutdown = async (signal: string) => {
+  console.log(`Received ${signal}, shutting down indexer gracefully...`);
+  isRunning = false;
+  try {
+    await prisma.$disconnect();
+  } catch (err) {
+    console.error("Error disconnecting Prisma:", err);
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 async function run() {
   console.log("Starting SubPath Durable PostgreSQL Indexer...");
@@ -33,7 +53,7 @@ async function run() {
 
   let lastSyncedLedger = state.lastSyncedLedger;
 
-  while (true) {
+  while (isRunning) {
     try {
       const latestLedger = await client.server.getLatestLedger();
       if (latestLedger.sequence > lastSyncedLedger) {
@@ -49,8 +69,10 @@ async function run() {
     } catch (e) {
       console.error("Indexer poll loop error:", e);
     }
-    // Poll every 10 seconds
-    await new Promise(r => setTimeout(r, 10000));
+    // Poll every 10 seconds, checking isRunning each second
+    for (let i = 0; i < 10 && isRunning; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
   }
 }
 
