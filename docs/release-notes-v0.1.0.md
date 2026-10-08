@@ -33,7 +33,8 @@ SubPath v0.1.0 provides the full-stack application layer, client SDK, and backgr
 3. **Multi-Wallet Support**: Full integration with `@creit.tech/stellar-wallets-kit`, enabling Freighter (browser extension), Albedo (zero-install web popup on mobile and desktop), xBull, Lobstr, Rabet, and Hana.
 4. **`apps/indexer`**: Background event streaming daemon continuously syncing Soroban ledgers into PostgreSQL with idempotent cursor state.
 5. **`apps/executor`**: Autonomous billing relayer daemon querying due subscriptions and submitting permissionless `execute_billing` transactions.
-6. **Automated CI Validation**: Monorepo GitHub Actions pipeline verifying linting, typechecking, tests, and production builds.
+6. **Cloud Daemon Deployment**: Turn-key Docker configurations (`Dockerfile.indexer`, `Dockerfile.executor`), `docker-compose.yml`, and `render.yaml` blueprint for 24/7 cloud worker deployment.
+7. **Automated CI Validation**: Monorepo GitHub Actions pipeline verifying linting, typechecking, tests, and production builds.
 
 ---
 
