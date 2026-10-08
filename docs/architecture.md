@@ -81,3 +81,5 @@ subpath-app/
   * Verifies subscriber token allowances against the SubPath contract.
   * Constructs and signs `execute_billing(subscriber, planId)` transactions using a funded operator keypair.
   * Submits transactions to Soroban RPC, updating next billing dates upon confirmation.
+* **Concurrency Locking**: It uses optimistic locking (`lockedAt`) to prevent multiple executor workers from double-billing the same subscription.
+* **Stale Recovery**: If an execution attempt crashes, locks older than 5 minutes are released and retried.
