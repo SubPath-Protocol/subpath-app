@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `apps/indexer`: Background event daemon indexing `plan_add`, `sub_new`, `sub_billed`, `sub_pause`, `sub_resume`, and `sub_end` events into Neon PostgreSQL with idempotent cursor resumption.
 * `apps/executor`: Autonomous recurring billing daemon scanning due subscriptions and submitting permissionless `execute_billing` transactions.
 * Production Vercel deployment with monorepo build configuration (`pnpm --filter @subpath/sdk build && pnpm --filter web build`) live at `https://subpath-app.vercel.app`.
+* Containerized worker deployment assets including `Dockerfile.indexer`, `Dockerfile.executor`, `docker-compose.yml`, and `render.yaml` blueprint for 24/7 cloud operation.
 * Full on-chain Testnet lifecycle verification documented in `docs/testnet-verification.md`.
 * Automated GitHub Actions CI pipeline passing lint, typecheck, tests, and workspace builds.
 

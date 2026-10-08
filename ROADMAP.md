@@ -8,6 +8,7 @@ This roadmap outlines the milestones and prospective areas of contribution for t
 * Hosted checkout pages for merchant subscription plans.
 * Multi-wallet connection kit supporting mobile and zero-install environments.
 * Production Vercel deployment and Neon PostgreSQL integration.
+* Containerized worker deployment assets (Dockerfiles, Docker Compose, Render Blueprint) for 24/7 cloud operation.
 
 ## Near-Term Maintenance
 
@@ -19,5 +20,5 @@ This roadmap outlines the milestones and prospective areas of contribution for t
 
 * **Webhook & Notification System**: Outbound webhooks notifying merchants of subscription renewals, failures, and cancellations.
 * **Customer Portal**: Self-service subscriber management portal for reviewing billing history and receipts.
-* **Containerized Deployment Packages**: Docker Compose and Helm charts for turn-key deployment of the indexer and executor daemons.
+* **Kubernetes & Helm Packages**: Helm charts and production Kubernetes manifests for large-scale multi-region daemon deployment.
 * **Automated Allowance Health Monitoring**: Pre-billing notifications alerting subscribers when token allowance or balance is low.
