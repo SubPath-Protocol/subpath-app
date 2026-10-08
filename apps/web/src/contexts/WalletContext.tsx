@@ -1,11 +1,23 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { isConnected, getAddress, getNetwork, signTransaction, requestAccess, isAllowed } from "@stellar/freighter-api";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import {
+  StellarWalletsKit,
+  Networks,
+  KitEventType,
+  SwkAppDarkTheme,
+} from "@creit.tech/stellar-wallets-kit";
+import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
+import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
+import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
+import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
+import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
+import { HanaModule } from "@creit.tech/stellar-wallets-kit/modules/hana";
 
 interface WalletState {
   address: string | null;
   network: string | null;
+  selectedWallet: string | null;
   isConnecting: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
@@ -17,95 +29,145 @@ const WalletContext = createContext<WalletState | null>(null);
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [network, setNetwork] = useState<string | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-
-  const checkConnection = React.useCallback(async () => {
-    try {
-      const conn = await isConnected();
-      if (conn && conn.isConnected) {
-        const allowed = await isAllowed();
-        if (allowed && allowed.isAllowed) {
-          const { address: pubKey } = await getAddress();
-          const { network: net } = await getNetwork();
-          setAddress(pubKey || null);
-          setNetwork(net || null);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("subpath_wallet");
-    if (stored) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      void checkConnection();
-    }
-  }, [checkConnection]);
+    if (typeof window === "undefined" || isInitialized.current) return;
+    isInitialized.current = true;
+
+    const targetNetwork =
+      process.env.NEXT_PUBLIC_STELLAR_NETWORK?.toUpperCase() === "PUBLIC"
+        ? Networks.PUBLIC
+        : Networks.TESTNET;
+
+    const modules = [
+      new FreighterModule(),
+      new AlbedoModule(),
+      new xBullModule(),
+      new LobstrModule(),
+      new RabetModule(),
+      new HanaModule(),
+    ];
+
+    StellarWalletsKit.init({
+      modules,
+      network: targetNetwork,
+      theme: SwkAppDarkTheme,
+      authModal: {
+        showInstallLabel: true,
+        hideUnsupportedWallets: false,
+      },
+    });
+
+    // Check if an address was previously active
+    void StellarWalletsKit.getAddress()
+      .then((res) => {
+        if (res.address) {
+          setAddress(res.address);
+          setNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet");
+        }
+      })
+      .catch(() => {
+        // No previously active address
+      });
+
+    const unsubDisconnect = StellarWalletsKit.on(KitEventType.DISCONNECT, () => {
+      setAddress(null);
+      setSelectedWallet(null);
+    });
+
+    const unsubState = StellarWalletsKit.on(KitEventType.STATE_UPDATED, (evt) => {
+      if (evt.payload.address) {
+        setAddress(evt.payload.address);
+      }
+    });
+
+    const unsubWallet = StellarWalletsKit.on(KitEventType.WALLET_SELECTED, (evt) => {
+      if (evt.payload.id) {
+        setSelectedWallet(evt.payload.id);
+      }
+    });
+
+    return () => {
+      if (typeof unsubDisconnect === "function") unsubDisconnect();
+      if (typeof unsubState === "function") unsubState();
+      if (typeof unsubWallet === "function") unsubWallet();
+    };
+  }, []);
 
   const connect = async () => {
     try {
       setIsConnecting(true);
-      const conn = await isConnected();
-      if (!conn || !conn.isConnected) {
-        alert("Freighter is not installed or not available. Please install it and refresh the page.");
-        setIsConnecting(false);
-        return;
+      const res = await StellarWalletsKit.authModal();
+      if (res && res.address) {
+        setAddress(res.address);
+        setNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK || "testnet");
       }
-
-      // requestAccess prompts Freighter popup if not already allowed
-      const access = await requestAccess();
-      if (access.error) {
-        alert(typeof access.error === "string" ? access.error : "User rejected wallet connection.");
-        setIsConnecting(false);
-        return;
+    } catch (e: unknown) {
+      const err = e as { code?: number; message?: string };
+      if (err?.code === -1) {
+        console.log("Wallet selection modal closed.");
+      } else {
+        console.error("Wallet connection error:", e);
+        alert(err?.message || "Failed to connect wallet.");
       }
-
-      const pubKey = access.address;
-      if (pubKey) {
-        const { network: net } = await getNetwork();
-        
-        const expectedNetwork = process.env.NEXT_PUBLIC_STELLAR_NETWORK?.toUpperCase() || "TESTNET";
-        if (net && net.toUpperCase() !== expectedNetwork) {
-          alert(`Please switch your Freighter wallet to ${expectedNetwork}. Currently on ${net}.`);
-        }
-
-        setAddress(pubKey);
-        setNetwork(net || null);
-        localStorage.setItem("subpath_wallet", "true");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Failed to connect wallet or user rejected the request.");
     } finally {
       setIsConnecting(false);
     }
   };
 
-  const disconnect = () => {
-    setAddress(null);
-    setNetwork(null);
-    localStorage.removeItem("subpath_wallet");
+  const disconnect = async () => {
+    try {
+      await StellarWalletsKit.disconnect();
+    } catch (e) {
+      console.error("Disconnect error:", e);
+    } finally {
+      setAddress(null);
+      setNetwork(null);
+      setSelectedWallet(null);
+    }
   };
 
   const signAndSubmit = async (xdr: string): Promise<string | null> => {
     try {
-      const { signedTxXdr } = await signTransaction(xdr, { networkPassphrase: process.env.NEXT_PUBLIC_STELLAR_PASSPHRASE || "Test SDF Network ; September 2015" });
-      if (!signedTxXdr) {
+      const passphrase =
+        process.env.NEXT_PUBLIC_STELLAR_PASSPHRASE ||
+        (process.env.NEXT_PUBLIC_STELLAR_NETWORK?.toUpperCase() === "PUBLIC"
+          ? Networks.PUBLIC
+          : Networks.TESTNET);
+
+      const res = await StellarWalletsKit.signTransaction(xdr, {
+        networkPassphrase: passphrase,
+        address: address || undefined,
+      });
+
+      if (!res || !res.signedTxXdr) {
         alert("Transaction signing was rejected.");
         return null;
       }
-      return signedTxXdr; 
-    } catch (e) {
-      console.error(e);
-      alert("Error signing transaction.");
+      return res.signedTxXdr;
+    } catch (e: unknown) {
+      console.error("Transaction signing error:", e);
+      const err = e as { message?: string };
+      alert(err?.message || "Error signing transaction.");
       return null;
     }
   };
 
   return (
-    <WalletContext.Provider value={{ address, network, isConnecting, connect, disconnect, signAndSubmit }}>
+    <WalletContext.Provider
+      value={{
+        address,
+        network,
+        selectedWallet,
+        isConnecting,
+        connect,
+        disconnect,
+        signAndSubmit,
+      }}
+    >
       {children}
     </WalletContext.Provider>
   );

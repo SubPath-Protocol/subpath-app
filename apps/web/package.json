@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.7.0",
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^17.0.0",
     "@subpath/sdk": "workspace:*",
