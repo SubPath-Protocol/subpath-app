@@ -128,6 +128,21 @@ pnpm build
 
 ---
 
+## Cloud Daemon Deployment
+
+To run the background workers (`indexer` and `executor`) continuously in the cloud:
+
+* **Docker Compose (VPS / Cloud Server)**:
+  ```bash
+  docker compose up -d --build
+  ```
+* **Render (1-Click Blueprint)**: Deploy background workers using [`render.yaml`](render.yaml).
+* **Railway**: Deploy services targeting [`Dockerfile.indexer`](Dockerfile.indexer) and [`Dockerfile.executor`](Dockerfile.executor).
+
+Full setup instructions are available in the [Operations Runbook](docs/operations.md).
+
+---
+
 ## Documentation Links
 
 * [Architecture & Monorepo Overview](docs/architecture.md)
