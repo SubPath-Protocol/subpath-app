@@ -2,6 +2,7 @@ import { SubPathClient, SubscriptionStatus } from "@subpath/sdk";
 import { PrismaClient } from "@prisma/client";
 import { scValToNative } from "@stellar/stellar-sdk";
 import * as dotenv from "dotenv";
+import { dispatchWebhookWithRetry, WebhookEventType, WebhookPayload } from "./webhook";
 
 dotenv.config();
 dotenv.config({ path: "../../.env.local" });
@@ -84,6 +85,24 @@ function parseSubscriptionStatus(status: any): number {
   return 1;
 }
 
+async function notifyMerchantWebhooks(
+  merchantAddress: string,
+  payload: WebhookPayload
+) {
+  try {
+    const webhooks = await (prisma as any).webhook.findMany({
+      where: { merchantAddress, active: true }
+    });
+    for (const wh of webhooks) {
+      dispatchWebhookWithRetry(wh.url, wh.secret, payload).catch((e) =>
+        console.error(`Failed to dispatch webhook to ${wh.url}:`, e)
+      );
+    }
+  } catch (err) {
+    console.error(`Error querying webhooks for merchant ${merchantAddress}:`, err);
+  }
+}
+
 async function syncEvents(startLedger: number, endLedger: number) {
   let res;
   try {
@@ -161,6 +180,16 @@ async function syncEvents(startLedger: number, endLedger: number) {
             }
           });
           console.log(`[INDEXER] Processed event sub_new -> Subscriber ${subscriber} on Plan #${planId}`);
+          const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+          if (planRecord) {
+            await notifyMerchantWebhooks(planRecord.merchant, {
+              event: "subscription_created",
+              merchantAddress: planRecord.merchant,
+              subscriberAddress: subscriber,
+              planId,
+              timestamp: Math.floor(Date.now() / 1000)
+            });
+          }
         }
       } else if (topic1 === "sub_pause") {
         const subscriber = String(topic2 || "");
@@ -170,6 +199,16 @@ async function syncEvents(startLedger: number, endLedger: number) {
           data: { status: 3, lockedAt: null } // 3 = PAUSED
         });
         console.log(`[INDEXER] Processed event sub_pause -> Subscriber ${subscriber} on Plan #${planId}`);
+        const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await notifyMerchantWebhooks(planRecord.merchant, {
+            event: "subscription_paused",
+            merchantAddress: planRecord.merchant,
+            subscriberAddress: subscriber,
+            planId,
+            timestamp: Math.floor(Date.now() / 1000)
+          });
+        }
       } else if (topic1 === "sub_resume") {
         const subscriber = String(topic2 || "");
         const planId = Number(scValToNative(event.value));
@@ -191,6 +230,16 @@ async function syncEvents(startLedger: number, endLedger: number) {
           data: { status: 0, lockedAt: null } // 0 = CANCELED
         });
         console.log(`[INDEXER] Processed event sub_cancel -> Subscriber ${subscriber} on Plan #${planId}`);
+        const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await notifyMerchantWebhooks(planRecord.merchant, {
+            event: "subscription_canceled",
+            merchantAddress: planRecord.merchant,
+            subscriberAddress: subscriber,
+            planId,
+            timestamp: Math.floor(Date.now() / 1000)
+          });
+        }
       } else if (topic1 === "sub_billed") {
         const subscriber = String(topic2 || "");
         const planId = Number(scValToNative(event.value));
@@ -214,6 +263,16 @@ async function syncEvents(startLedger: number, endLedger: number) {
           }
         });
         console.log(`[INDEXER] Processed event sub_billed -> Billed ${subscriber} for Plan #${planId}`);
+        const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await notifyMerchantWebhooks(planRecord.merchant, {
+            event: "subscription_billed",
+            merchantAddress: planRecord.merchant,
+            subscriberAddress: subscriber,
+            planId,
+            timestamp: Math.floor(Date.now() / 1000)
+          });
+        }
       }
 
       // Mark event as processed
