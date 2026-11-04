@@ -163,7 +163,7 @@ export function MobileSubscriptionDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end md:hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex justify-end animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="subscription-drawer-title"
