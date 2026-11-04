@@ -2,6 +2,7 @@ import { SubPathClient, SubscriptionStatus } from "@subpath/sdk";
 import { PrismaClient } from "@prisma/client";
 import { scValToNative } from "@stellar/stellar-sdk";
 import * as dotenv from "dotenv";
+import { dispatchMerchantWebhooks } from "./webhook.js";
 
 dotenv.config();
 dotenv.config({ path: "../../.env.local" });
@@ -161,6 +162,18 @@ async function syncEvents(startLedger: number, endLedger: number) {
             }
           });
           console.log(`[INDEXER] Processed event sub_new -> Subscriber ${subscriber} on Plan #${planId}`);
+
+          // Phase 13: Merchant Webhook Dispatch - subscription_created
+          const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+          if (planRecord) {
+            await dispatchMerchantWebhooks(prisma, planRecord.merchant, "subscription_created", {
+              subscriber,
+              planId,
+              status: parsedStatus,
+              amount: planRecord.amount,
+              ledger: event.ledger || endLedger
+            });
+          }
         }
       } else if (topic1 === "sub_pause") {
         const subscriber = String(topic2 || "");
@@ -170,19 +183,42 @@ async function syncEvents(startLedger: number, endLedger: number) {
           data: { status: 3, lockedAt: null } // 3 = PAUSED
         });
         console.log(`[INDEXER] Processed event sub_pause -> Subscriber ${subscriber} on Plan #${planId}`);
+
+        // Phase 13: Merchant Webhook Dispatch - subscription_paused
+        const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(prisma, planRecord.merchant, "subscription_paused", {
+            subscriber,
+            planId,
+            status: 3,
+            ledger: event.ledger || endLedger
+          });
+        }
       } else if (topic1 === "sub_resume") {
         const subscriber = String(topic2 || "");
         const planId = Number(scValToNative(event.value));
         const subData = await client.getSubscription(subscriber, planId);
+        const resolvedStatus = subData ? parseSubscriptionStatus(subData.status) : 1;
         await prisma.subscription.updateMany({
           where: { subscriber, planId },
           data: {
-            status: subData ? parseSubscriptionStatus(subData.status) : 1,
+            status: resolvedStatus,
             nextBillingTime: subData ? Number(subData.next_billing_time) : Math.floor(Date.now() / 1000),
             lockedAt: null
           }
         });
         console.log(`[INDEXER] Processed event sub_resume -> Subscriber ${subscriber} on Plan #${planId}`);
+
+        // Phase 13: Merchant Webhook Dispatch - subscription_resumed (created/resumed)
+        const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(prisma, planRecord.merchant, "subscription_created", {
+            subscriber,
+            planId,
+            status: resolvedStatus,
+            ledger: event.ledger || endLedger
+          });
+        }
       } else if (topic1 === "sub_end" || topic1 === "sub_cancel") {
         const subscriber = String(topic2 || "");
         const planId = Number(scValToNative(event.value));
@@ -191,6 +227,17 @@ async function syncEvents(startLedger: number, endLedger: number) {
           data: { status: 0, lockedAt: null } // 0 = CANCELED
         });
         console.log(`[INDEXER] Processed event sub_cancel -> Subscriber ${subscriber} on Plan #${planId}`);
+
+        // Phase 13: Merchant Webhook Dispatch - subscription_canceled
+        const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(prisma, planRecord.merchant, "subscription_canceled", {
+            subscriber,
+            planId,
+            status: 0,
+            ledger: event.ledger || endLedger
+          });
+        }
       } else if (topic1 === "sub_billed") {
         const subscriber = String(topic2 || "");
         const planId = Number(scValToNative(event.value));
@@ -214,6 +261,19 @@ async function syncEvents(startLedger: number, endLedger: number) {
           }
         });
         console.log(`[INDEXER] Processed event sub_billed -> Billed ${subscriber} for Plan #${planId}`);
+
+        // Phase 13: Merchant Webhook Dispatch - subscription_billed
+        const planRecord = await prisma.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(prisma, planRecord.merchant, "subscription_billed", {
+            subscriber,
+            planId,
+            status: subData ? parseSubscriptionStatus(subData.status) : 1,
+            amount: planRecord.amount,
+            txHash: event.txHash || null,
+            ledger: event.ledger || endLedger
+          });
+        }
       }
 
       // Mark event as processed
