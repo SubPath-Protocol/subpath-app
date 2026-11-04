@@ -2,6 +2,7 @@ import { SubPathClient } from "@subpath/sdk";
 import { Keypair, TransactionBuilder, Account } from "@stellar/stellar-sdk";
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
+import { calculateDunningRetry, getDunningDelay } from "./dunning";
 
 dotenv.config();
 dotenv.config({ path: "../../.env.local" });
@@ -183,11 +184,39 @@ async function pollAndExecute() {
         }
       });
 
-      // Release lock so it can be retried or synced with chain state
-      await prisma.subscription.updateMany({
-        where: { subscriber: sub.subscriber, planId: sub.planId },
-        data: { status: 1, lockedAt: null }
+      // Dunning backoff retry calculation: count recent failures
+      const recentFailures = await prisma.billingAttempt.count({
+        where: {
+          subscriber: sub.subscriber,
+          planId: sub.planId,
+          status: "FAILED",
+          createdAt: { gte: new Date(Date.now() - 48 * 3600 * 1000) }
+        }
       });
+
+      const dunning = calculateDunningRetry(now, recentFailures);
+
+      if (dunning.isMaxRetriesExceeded) {
+        console.warn(
+          `[EXECUTOR DUNNING MAX EXCEEDED] Subscriber ${sub.subscriber} on Plan #${sub.planId} exhausted all ${dunning.attemptCount} retries. Marking subscription as past due / paused.`
+        );
+        await prisma.subscription.updateMany({
+          where: { subscriber: sub.subscriber, planId: sub.planId },
+          data: { status: 3, lockedAt: null } // 3 = PAUSED / PAST_DUE
+        });
+      } else {
+        console.log(
+          `[EXECUTOR DUNNING RETRY] Scheduled attempt #${dunning.attemptCount + 1} for ${sub.subscriber} on Plan #${sub.planId} in ${dunning.delaySeconds}s (at timestamp ${dunning.nextRetryTimestamp})`
+        );
+        await prisma.subscription.updateMany({
+          where: { subscriber: sub.subscriber, planId: sub.planId },
+          data: {
+            status: 1, // Stay ACTIVE
+            nextBillingTime: dunning.nextRetryTimestamp!,
+            lockedAt: null
+          }
+        });
+      }
     }
   }
 }
