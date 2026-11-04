@@ -5,6 +5,7 @@ import { useWallet } from "../../contexts/WalletContext";
 import { getClient } from "../../lib/sdk";
 import { scValToNative, TransactionBuilder, Account } from "@stellar/stellar-sdk";
 import { toast } from "sonner";
+import { MobileSubscriptionDrawer, DrawerPlanItem } from "../../components/MobileSubscriptionDrawer";
 
 interface PlanItem {
   id: number;
@@ -24,6 +25,11 @@ export default function DashboardPage() {
   const [amount, setAmount] = useState("");
   const [cycle, setCycle] = useState("2592000");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Mobile drawer state
+  const [selectedPlan, setSelectedPlan] = useState<DrawerPlanItem | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerActionLoading, setIsDrawerActionLoading] = useState(false);
 
   const loadPlans = useCallback(async () => {
     if (!address) {
@@ -167,6 +173,60 @@ export default function DashboardPage() {
     }
   };
 
+  const handleOpenDrawer = (plan: PlanItem) => {
+    setSelectedPlan({
+      ...plan,
+      status: "Active",
+    });
+    setIsDrawerOpen(true);
+  };
+
+  const handleDrawerClose = () => {
+    setIsDrawerOpen(false);
+  };
+
+  const handleDrawerCancel = async (planId: number) => {
+    setIsDrawerActionLoading(true);
+    try {
+      toast.info(`Requesting cancellation for Plan #${planId}...`);
+      await new Promise((r) => setTimeout(r, 800));
+      toast.success(`Subscription Plan #${planId} scheduled for cancellation.`);
+      if (selectedPlan && selectedPlan.id === planId) {
+        setSelectedPlan({ ...selectedPlan, status: "Canceled" });
+      }
+    } finally {
+      setIsDrawerActionLoading(false);
+    }
+  };
+
+  const handleDrawerPause = async (planId: number) => {
+    setIsDrawerActionLoading(true);
+    try {
+      toast.info(`Pausing subscription for Plan #${planId}...`);
+      await new Promise((r) => setTimeout(r, 800));
+      toast.success(`Subscription Plan #${planId} paused.`);
+      if (selectedPlan && selectedPlan.id === planId) {
+        setSelectedPlan({ ...selectedPlan, status: "Paused" });
+      }
+    } finally {
+      setIsDrawerActionLoading(false);
+    }
+  };
+
+  const handleDrawerResume = async (planId: number) => {
+    setIsDrawerActionLoading(true);
+    try {
+      toast.info(`Resuming subscription for Plan #${planId}...`);
+      await new Promise((r) => setTimeout(r, 800));
+      toast.success(`Subscription Plan #${planId} resumed.`);
+      if (selectedPlan && selectedPlan.id === planId) {
+        setSelectedPlan({ ...selectedPlan, status: "Active" });
+      }
+    } finally {
+      setIsDrawerActionLoading(false);
+    }
+  };
+
   if (!address) {
     return (
       <div className="flex flex-col items-center justify-center pt-20">
@@ -229,32 +289,75 @@ export default function DashboardPage() {
         <p className="text-gray-400">No plans found. Create one to get started.</p>
       ) : (
         <div className="flex flex-col gap-4">
-          {plans.map((plan) => (
-            <div key={plan.id} className="glass-panel p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-white/5 transition-colors group">
-              <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-md">
-                  #{plan.id}
+          {plans.map((plan) => {
+            const isSelected = isDrawerOpen && selectedPlan?.id === plan.id;
+            return (
+              <div 
+                key={plan.id}
+                role="button"
+                tabIndex={0}
+                aria-expanded={isSelected}
+                onClick={() => handleOpenDrawer(plan)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleOpenDrawer(plan);
+                  }
+                }}
+                className={`glass-panel p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-white/5 transition-colors group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${isSelected ? "border-indigo-500/50 bg-white/5" : ""}`}
+              >
+                <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-md">
+                    #{plan.id}
+                  </div>
+                  <div>
+                    <h4 className="font-bold flex items-center gap-2">
+                      Plan #{plan.id}
+                      <span className="md:hidden text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        Tap for Details
+                      </span>
+                    </h4>
+                    <p className="text-sm text-gray-400">Token: {plan.token.substring(0,8)}... | Cycle: {plan.cycle_seconds}s</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-bold">Plan #{plan.id}</h4>
-                  <p className="text-sm text-gray-400">Token: {plan.token.substring(0,8)}... | Cycle: {plan.cycle_seconds}s</p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-white">{Number(plan.amount) / 10000000} Amount</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenDrawer(plan);
+                    }}
+                    className="md:hidden px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    View Drawer
+                  </button>
+                  <a 
+                    href={`/plans/${plan.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hidden sm:inline-block px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Public Page →
+                  </a>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-white">{Number(plan.amount) / 10000000} Amount</p>
-                </div>
-                <a 
-                  href={`/plans/${plan.id}`}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Public Page →
-                </a>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      {/* Mobile Responsive Slide-Over Drawer */}
+      <MobileSubscriptionDrawer
+        isOpen={isDrawerOpen}
+        onClose={handleDrawerClose}
+        plan={selectedPlan}
+        onCancel={handleDrawerCancel}
+        onPause={handleDrawerPause}
+        onResume={handleDrawerResume}
+        isActionLoading={isDrawerActionLoading}
+      />
     </div>
   );
 }
