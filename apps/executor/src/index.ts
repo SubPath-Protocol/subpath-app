@@ -2,6 +2,21 @@ import { SubPathClient } from "@subpath/sdk";
 import { Keypair, TransactionBuilder, Account } from "@stellar/stellar-sdk";
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
+import {
+  calculateDunningRetry,
+  formatDunningRetryLog,
+  DEFAULT_DUNNING_BACKOFF_HOURS,
+  MAX_DUNNING_RETRY_ATTEMPTS,
+  type DunningRetryResult,
+} from "./dunning";
+
+export {
+  calculateDunningRetry,
+  formatDunningRetryLog,
+  DEFAULT_DUNNING_BACKOFF_HOURS,
+  MAX_DUNNING_RETRY_ATTEMPTS,
+  type DunningRetryResult,
+};
 
 dotenv.config();
 dotenv.config({ path: "../../.env.local" });
@@ -173,6 +188,19 @@ async function pollAndExecute() {
       const err = e as Error;
       console.error(`[EXECUTOR ERROR] Failed billing ${sub.subscriber} on Plan #${sub.planId}:`, err.message);
 
+      // Phase 16: Dunning Retry Schedule with Exponential Backoff
+      const failureCount = await prisma.billingAttempt.count({
+        where: {
+          subscriber: sub.subscriber,
+          planId: sub.planId,
+          status: "FAILED",
+          ...(sub.lastBilledAt ? { createdAt: { gte: new Date(sub.lastBilledAt * 1000) } } : {}),
+        },
+      });
+
+      const retrySchedule = calculateDunningRetry(failureCount, now);
+      console.log(formatDunningRetryLog(sub.subscriber, sub.planId, retrySchedule));
+
       // Phase 16: Retry Policy & BillingAttempt recording
       await prisma.billingAttempt.create({
         data: {
@@ -183,11 +211,16 @@ async function pollAndExecute() {
         }
       });
 
-      // Release lock so it can be retried or synced with chain state
+      // Release lock and reschedule next retry (or transition to PAUSED if max retries exceeded)
       await prisma.subscription.updateMany({
         where: { subscriber: sub.subscriber, planId: sub.planId },
-        data: { status: 1, lockedAt: null }
+        data: {
+          status: retrySchedule.nextStatus,
+          nextBillingTime: retrySchedule.nextBillingTime,
+          lockedAt: null,
+        },
       });
+
     }
   }
 }
@@ -207,4 +240,6 @@ async function waitForTransactionConfirmation(hash: string, maxAttempts = 10, de
   return { status: "TIMEOUT" };
 }
 
-run();
+if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+  run();
+}
