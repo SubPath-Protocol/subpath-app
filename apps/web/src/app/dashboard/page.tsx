@@ -49,6 +49,7 @@ export default function DashboardPage() {
   // Drawer state
   const [selectedPlan, setSelectedPlan] = useState<DrawerPlanItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"subscriber" | "merchant">("subscriber");
   const [isDrawerActionLoading, setIsDrawerActionLoading] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -232,14 +233,17 @@ export default function DashboardPage() {
       status: item.status,
       next_billing_time: item.nextBillingTime,
     });
+    setDrawerMode("subscriber");
     setIsDrawerOpen(true);
   };
 
+  // Merchants are not subscribed to their own plans, so the drawer is read-only here.
   const handleOpenMerchantPlanDrawer = (plan: PlanItem) => {
     setSelectedPlan({
       ...plan,
       status: "Active",
     });
+    setDrawerMode("merchant");
     setIsDrawerOpen(true);
   };
 
@@ -312,16 +316,16 @@ export default function DashboardPage() {
           toast.success(`${actionLabel} confirmed on-chain!`);
           setSelectedPlan((prev) => (prev ? { ...prev, status: nextStatus } : null));
           setTimeout(() => loadData(), 2000);
+        } else if (status === "FAILED") {
+          throw new Error(`${actionLabel} failed on-chain.`);
         } else {
           toast.info(`Transaction submitted: ${resp.hash.substring(0, 8)}...`);
         }
       }
     } catch (e: unknown) {
       const err = e as Error;
-      toast.error(`Transaction note: ${err.message || String(e)}`);
-      // Update local state preview
-      const fallbackStatus = operationType === "pause" ? "Paused" : operationType === "resume" ? "Active" : "Canceled";
-      setSelectedPlan((prev) => (prev ? { ...prev, status: fallbackStatus } : null));
+      // Do not mutate the displayed status on failure: the on-chain state is unchanged.
+      toast.error(`Transaction failed: ${err.message || String(e)}`);
     } finally {
       setIsDrawerActionLoading(false);
     }
@@ -615,9 +619,9 @@ export default function DashboardPage() {
         isOpen={isDrawerOpen}
         onClose={handleDrawerClose}
         plan={selectedPlan}
-        onCancel={(id) => executeSubscriptionOperation(id, "cancel")}
-        onPause={(id) => executeSubscriptionOperation(id, "pause")}
-        onResume={(id) => executeSubscriptionOperation(id, "resume")}
+        onCancel={drawerMode === "subscriber" ? (id) => executeSubscriptionOperation(id, "cancel") : undefined}
+        onPause={drawerMode === "subscriber" ? (id) => executeSubscriptionOperation(id, "pause") : undefined}
+        onResume={drawerMode === "subscriber" ? (id) => executeSubscriptionOperation(id, "resume") : undefined}
         isActionLoading={isDrawerActionLoading}
       />
     </div>
