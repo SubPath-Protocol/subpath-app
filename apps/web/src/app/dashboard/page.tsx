@@ -5,6 +5,7 @@ import { useWallet } from "../../contexts/WalletContext";
 import { getClient } from "../../lib/sdk";
 import { scValToNative, TransactionBuilder, Account } from "@stellar/stellar-sdk";
 import { toast } from "sonner";
+import { SubscriptionDrawer } from "../../components/SubscriptionDrawer";
 
 interface PlanItem {
   id: number;
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
+  const [selectedPlanForDrawer, setSelectedPlanForDrawer] = useState<PlanItem | null>(null);
 
   const [tokenAddress, setTokenAddress] = useState("");
   const [amount, setAmount] = useState("");
@@ -230,7 +232,11 @@ export default function DashboardPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {plans.map((plan) => (
-            <div key={plan.id} className="glass-panel p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-white/5 transition-colors group">
+            <div 
+              key={plan.id} 
+              onClick={() => setSelectedPlanForDrawer(plan)}
+              className="glass-panel p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-white/5 transition-colors group cursor-pointer sm:cursor-default"
+            >
               <div className="flex items-center gap-4 mb-4 sm:mb-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-md">
                   #{plan.id}
@@ -244,17 +250,36 @@ export default function DashboardPage() {
                 <div className="text-right">
                   <p className="text-sm font-medium text-white">{Number(plan.amount) / 10000000} Amount</p>
                 </div>
-                <a 
-                  href={`/plans/${plan.id}`}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Public Page →
-                </a>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPlanForDrawer(plan);
+                    }}
+                    className="sm:hidden px-3 py-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-semibold"
+                  >
+                    Details
+                  </button>
+                  <a 
+                    href={`/plans/${plan.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Public Page →
+                  </a>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Mobile Drawer for Active Plan Inspection */}
+      <SubscriptionDrawer
+        isOpen={Boolean(selectedPlanForDrawer)}
+        onClose={() => setSelectedPlanForDrawer(null)}
+        plan={selectedPlanForDrawer}
+      />
     </div>
   );
 }
