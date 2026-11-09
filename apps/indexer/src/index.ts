@@ -2,6 +2,7 @@ import { SubPathClient } from "@subpath/sdk";
 import { PrismaClient } from "@prisma/client";
 import { scValToNative } from "@stellar/stellar-sdk";
 import * as dotenv from "dotenv";
+import { dispatchMerchantWebhooks } from "./webhook.js";
 
 dotenv.config();
 dotenv.config({ path: "../../.env.local" });
@@ -158,6 +159,23 @@ export async function processContractEvent(
         data: { eventId, eventType, ledger: event.ledger || 0 }
       })
     ]);
+
+    try {
+      if (db.plan?.findUnique) {
+        const planRecord = await db.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(db, planRecord.merchant, "subscription_created", {
+            subscriber,
+            planId,
+            status: parsedStatus,
+            amount: planRecord.amount,
+            ledger: event.ledger || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`[WEBHOOK WARN] Error dispatching sub_new webhook:`, e);
+    }
   } else if (eventType === "sub_pause") {
     const subscriber = String(topic2 || "");
     const planId = Number(scValToNative(event.value));
@@ -171,16 +189,33 @@ export async function processContractEvent(
         data: { eventId, eventType, ledger: event.ledger || 0 }
       })
     ]);
+
+    try {
+      if (db.plan?.findUnique) {
+        const planRecord = await db.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(db, planRecord.merchant, "subscription_paused", {
+            subscriber,
+            planId,
+            status: 3,
+            ledger: event.ledger || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`[WEBHOOK WARN] Error dispatching sub_pause webhook:`, e);
+    }
   } else if (eventType === "sub_resume") {
     const subscriber = String(topic2 || "");
     const planId = Number(scValToNative(event.value));
     const subData = await sdkClient.getSubscription(subscriber, planId);
+    const resolvedStatus = subData ? parseSubscriptionStatus(subData.status) : 1;
 
     await db.$transaction([
       db.subscription.updateMany({
         where: { subscriber, planId },
         data: {
-          status: subData ? parseSubscriptionStatus(subData.status) : 1,
+          status: resolvedStatus,
           nextBillingTime: subData ? Number(subData.next_billing_time) : Math.floor(Date.now() / 1000),
           lockedAt: null
         }
@@ -189,6 +224,22 @@ export async function processContractEvent(
         data: { eventId, eventType, ledger: event.ledger || 0 }
       })
     ]);
+
+    try {
+      if (db.plan?.findUnique) {
+        const planRecord = await db.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(db, planRecord.merchant, "subscription_created", {
+            subscriber,
+            planId,
+            status: resolvedStatus,
+            ledger: event.ledger || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`[WEBHOOK WARN] Error dispatching sub_resume webhook:`, e);
+    }
   } else if (eventType === "sub_end" || eventType === "sub_cancel") {
     const subscriber = String(topic2 || "");
     const planId = Number(scValToNative(event.value));
@@ -202,6 +253,22 @@ export async function processContractEvent(
         data: { eventId, eventType, ledger: event.ledger || 0 }
       })
     ]);
+
+    try {
+      if (db.plan?.findUnique) {
+        const planRecord = await db.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(db, planRecord.merchant, "subscription_canceled", {
+            subscriber,
+            planId,
+            status: 0,
+            ledger: event.ledger || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`[WEBHOOK WARN] Error dispatching sub_cancel webhook:`, e);
+    }
   } else if (eventType === "sub_billed") {
     const subscriber = String(topic2 || "");
     const planId = Number(scValToNative(event.value));
@@ -237,6 +304,24 @@ export async function processContractEvent(
     );
 
     await db.$transaction(ops);
+
+    try {
+      if (db.plan?.findUnique) {
+        const planRecord = await db.plan.findUnique({ where: { id: planId } });
+        if (planRecord) {
+          await dispatchMerchantWebhooks(db, planRecord.merchant, "subscription_billed", {
+            subscriber,
+            planId,
+            status: subData ? parseSubscriptionStatus(subData.status) : 1,
+            amount: planRecord.amount,
+            txHash: event.txHash || null,
+            ledger: event.ledger || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`[WEBHOOK WARN] Error dispatching sub_billed webhook:`, e);
+    }
   }
 
   return { processed: true, eventId, status: "indexed" };
