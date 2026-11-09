@@ -46,5 +46,10 @@ describe('SubPathClient Operations & Validations', () => {
     const op = client.executeBilling(dummySubscriber, 1);
     expect(op).toBeDefined();
     expect(op.body).toBeDefined();
+
+    // Verify 3-argument legacy overload delegates to 2-arg contract signature
+    const legacyOp = client.executeBilling(dummyMerchant, dummySubscriber, 1);
+    expect(legacyOp).toBeDefined();
+    expect(legacyOp.body).toBeDefined();
   });
 });
