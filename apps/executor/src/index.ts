@@ -2,6 +2,21 @@ import { SubPathClient } from "@subpath/sdk";
 import { Keypair, TransactionBuilder, Account } from "@stellar/stellar-sdk";
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
+import {
+  calculateDunningRetry,
+  formatDunningRetryLog,
+  DEFAULT_DUNNING_BACKOFF_HOURS,
+  MAX_DUNNING_RETRY_ATTEMPTS,
+  type DunningRetryResult,
+} from "./dunning";
+
+export {
+  calculateDunningRetry,
+  formatDunningRetryLog,
+  DEFAULT_DUNNING_BACKOFF_HOURS,
+  MAX_DUNNING_RETRY_ATTEMPTS,
+  type DunningRetryResult,
+};
 
 dotenv.config();
 dotenv.config({ path: "../../.env.local" });
@@ -337,7 +352,19 @@ export async function pollAndExecute(
       console.error(`[EXECUTOR ERROR] Error executing billing for ${sub.subscriber}:${sub.planId}:`, err.message);
 
       if (!txHash) {
-        // Submission failed before on-chain receipt -> safe to record failed and release lock
+        // Submission failed before on-chain receipt -> safe to record failed and reschedule with dunning
+        const failureCount = await db.billingAttempt.count({
+          where: {
+            subscriber: sub.subscriber,
+            planId: sub.planId,
+            status: "FAILED",
+            ...(sub.lastBilledAt ? { createdAt: { gte: new Date(sub.lastBilledAt * 1000) } } : {}),
+          },
+        });
+
+        const retrySchedule = calculateDunningRetry(failureCount, now);
+        console.log(formatDunningRetryLog(sub.subscriber, sub.planId, retrySchedule));
+
         await db.billingAttempt.create({
           data: {
             subscriber: sub.subscriber,
@@ -346,9 +373,14 @@ export async function pollAndExecute(
             errorMessage: err.message || "Submission failure"
           }
         });
+
         await db.subscription.updateMany({
           where: { subscriber: sub.subscriber, planId: sub.planId },
-          data: { status: 1, lockedAt: null }
+          data: {
+            status: retrySchedule.nextStatus,
+            nextBillingTime: retrySchedule.nextBillingTime,
+            lockedAt: null
+          }
         });
       }
     }
@@ -400,6 +432,6 @@ export async function run() {
   }
 }
 
-if (process.env.NODE_ENV !== "test" && require.main === module) {
+if (process.env.NODE_ENV !== "test" && !process.env.VITEST && require.main === module) {
   run();
 }
