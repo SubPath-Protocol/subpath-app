@@ -17,7 +17,7 @@
     "@subpath/sdk": "workspace:*",
     "framer-motion": "^14.0.0",
     "lucide-react": "^1.52.0",
-    "next": "16.3.6",
+    "next": "16.4.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sonner": "^2.0.8"
