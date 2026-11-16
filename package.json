@@ -8,7 +8,8 @@
     "build": "pnpm db:generate && pnpm -r build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm db:generate && pnpm -r typecheck",
-    "test": "pnpm db:generate && pnpm -r test"
+    "test": "pnpm db:generate && pnpm -r test",
+    "validate:funding": "node scripts/validate-funding.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
