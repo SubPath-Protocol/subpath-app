@@ -6,9 +6,14 @@
     "dev": "pnpm -r --parallel dev",
     "db:generate": "pnpm --filter indexer db:generate",
     "build": "pnpm db:generate && pnpm -r build",
+    "build:contracts": "stellar contract build",
+    "build:all": "pnpm run build && pnpm run build:contracts",
     "lint": "pnpm -r lint",
+    "lint:contracts": "cargo clippy --workspace --all-targets -- -D warnings",
     "typecheck": "pnpm db:generate && pnpm -r typecheck",
     "test": "pnpm db:generate && pnpm -r test",
+    "test:contracts": "cargo test --workspace",
+    "test:all": "pnpm run test && pnpm run test:contracts",
     "validate:funding": "node scripts/validate-funding.mjs"
   },
   "pnpm": {

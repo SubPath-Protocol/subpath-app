@@ -9,3 +9,12 @@ dist
 *.db
 *.db-journal
 
+# Rust & Cargo
+target/
+Cargo.lock
+
+# Playbook files
+Stellar_Drips_Wave_Master_Playbook.*
+generate_playbook_pdf.py
+
+
