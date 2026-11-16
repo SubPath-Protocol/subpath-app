@@ -16,6 +16,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 20
+
+      - name: Validate FUNDING.json
+        run: node scripts/validate-funding.mjs
           
       - name: Install pnpm
         run: npm install -g pnpm@9.12.1
